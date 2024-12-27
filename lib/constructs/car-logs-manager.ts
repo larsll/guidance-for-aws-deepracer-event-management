@@ -15,9 +15,9 @@ import { Construct } from 'constructs';
 import { StandardLambdaPythonFunction } from './standard-lambda-python-function';
 import path = require('path');
 
-const MAX_VCPU = 8;
+const MAX_VCPU = 16;
 
-export interface LogsManagerProps {
+export interface CarLogsManagerProps {
   logsBucket: s3.IBucket;
   modelsBucket: s3.IBucket;
   appsyncApi: {
@@ -39,15 +39,15 @@ export interface LogsManagerProps {
   eventbus: EventBus;
 }
 
-export class LogsManager extends Construct {
+export class CarLogsManager extends Construct {
   public readonly bagUploadBucket: s3.Bucket;
-  public readonly videoOutputBucket: s3.Bucket;
+  public readonly carLogsBucket: s3.Bucket;
   public readonly logsTable: dynamodb.Table;
   public readonly vpc: ec2.IVpc;
   public readonly jobQueue: batch.CfnJobQueue;
   public readonly jobDefinition: batch.CfnJobDefinition;
 
-  constructor(scope: Construct, id: string, props: LogsManagerProps) {
+  constructor(scope: Construct, id: string, props: CarLogsManagerProps) {
     super(scope, id);
 
     // Use existing VPC or create new one
@@ -92,10 +92,10 @@ export class LogsManager extends Construct {
     this.bagUploadBucket.addCorsRule(corsRule);
 
     // Use existing bucket or create new one for output
-    this.videoOutputBucket = new s3.Bucket(this, 'video-output-bucket', {
+    this.carLogsBucket = new s3.Bucket(this, 'car-logs-bucket', {
       encryption: s3.BucketEncryption.S3_MANAGED, // TODO change to KMS encryption CMK
       serverAccessLogsBucket: props.logsBucket,
-      serverAccessLogsPrefix: 'access-logs/models_bucket/',
+      serverAccessLogsPrefix: 'access-logs/car_logs_bucket/',
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
       autoDeleteObjects: true,
@@ -109,7 +109,7 @@ export class LogsManager extends Construct {
     });
 
     // Use existing table or create new one
-    this.logsTable = new dynamodb.Table(this, 'LogsTable', {
+    this.logsTable = new dynamodb.Table(this, 'CarLogsTable', {
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -144,7 +144,7 @@ export class LogsManager extends Construct {
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
     });
 
-    const logGroup = new cdk.aws_logs.LogGroup(this, 'LogsProcessorLogGroup', {
+    const logGroup = new cdk.aws_logs.LogGroup(this, 'CarLogsProcessor', {
       retention: cdk.aws_logs.RetentionDays.SIX_MONTHS,
     });
 
@@ -161,7 +161,7 @@ export class LogsManager extends Construct {
     );
 
     // Grant permissions to task role
-    this.videoOutputBucket.grantReadWrite(taskRole);
+    this.carLogsBucket.grantReadWrite(taskRole);
     this.logsTable.grantReadWriteData(taskRole);
     props.modelsBucket.grantRead(taskRole);
 
@@ -211,7 +211,7 @@ export class LogsManager extends Construct {
         environment: [
           { name: 'LOG_LEVEL', value: props.lambdaConfig.layersConfig.powerToolsLogLevel },
           { name: 'LOGS_TABLE', value: this.logsTable.tableName },
-          { name: 'LOGS_BUCKET', value: this.videoOutputBucket.bucketName },
+          { name: 'LOGS_BUCKET', value: this.carLogsBucket.bucketName },
           { name: 'MODELS_BUCKET', value: props.modelsBucket.bucketName },
           { name: 'APPSYNC_URL', value: props.appsyncApi.api.graphqlUrl },
           { name: 'CODEC', value: 'avc1' },
@@ -233,7 +233,7 @@ export class LogsManager extends Construct {
     const processorFunction = new StandardLambdaPythonFunction(this, 'processBatchOfBags', {
       runtime: props.lambdaConfig.runtime,
       architecture: props.lambdaConfig.architecture,
-      entry: 'lib/lambdas/logs_processor/',
+      entry: 'lib/lambdas/car_logs_processor/',
       memorySize: 1024,
       timeout: Duration.minutes(15),
       environment: {
@@ -241,7 +241,7 @@ export class LogsManager extends Construct {
         LOG_LEVEL: props.lambdaConfig.layersConfig.powerToolsLogLevel,
         LOGS_TABLE: this.logsTable.tableName,
         BAGS_UPLOAD_BUCKET: this.bagUploadBucket.bucketName,
-        OUTPUT_BUCKET: this.videoOutputBucket.bucketName,
+        OUTPUT_BUCKET: this.carLogsBucket.bucketName,
         JOB_QUEUE: this.jobQueue.ref,
         JOB_DEFINITION: this.jobDefinition.ref,
         APPSYNC_URL: props.appsyncApi.api.graphqlUrl,
@@ -258,7 +258,7 @@ export class LogsManager extends Construct {
 
     // Grant permissions to Lambda
     this.bagUploadBucket.grantRead(processorFunction);
-    this.videoOutputBucket.grantReadWrite(processorFunction);
+    this.carLogsBucket.grantReadWrite(processorFunction);
     this.logsTable.grantWriteData(processorFunction);
     props.appsyncApi.api.grantQuery(processorFunction, 'carsOnline');
     props.appsyncApi.api.grantQuery(processorFunction, 'getAllModels');
@@ -280,6 +280,6 @@ export class LogsManager extends Construct {
     );
 
     // Add tags
-    cdk.Tags.of(this).add('Purpose', 'LogsProcessing');
+    cdk.Tags.of(this).add('Purpose', 'CarLogsProcessing');
   }
 }
