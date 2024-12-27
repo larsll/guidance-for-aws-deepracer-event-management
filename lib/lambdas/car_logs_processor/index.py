@@ -31,8 +31,6 @@ def lambda_handler(event: dict, context: LambdaContext) -> str:
     # Get the required data from the event json
     # Theoretically we can receive more than one file
 
-    matched_bags = {"bags": []}
-
     for record in event["Records"]:
         if record["eventName"] == "ObjectCreated:CompleteMultipartUpload":
             bucket = record["s3"]["bucket"]["name"]
@@ -46,6 +44,9 @@ def lambda_handler(event: dict, context: LambdaContext) -> str:
             logger.info(
                 f"Batch name: {batch_name}, car name: {car_name}, timestamp: {timestamp}"
             )
+
+            matched_bags = {"bags": []}
+            matched_bags["car_name"] = car_name
 
             # Get the car ID from AppSync
             car_id, online = get_car_id(car_name)
@@ -96,28 +97,28 @@ def lambda_handler(event: dict, context: LambdaContext) -> str:
             finally:
                 clean_directory(tmp_dir)
 
-    # Create a batch job for the matched bags
-    job_queue = os.environ["JOB_QUEUE"]
-    job_definition = os.environ["JOB_DEFINITION"]
+            # Create a batch job for the matched bags
+            job_queue = os.environ["JOB_QUEUE"]
+            job_definition = os.environ["JOB_DEFINITION"]
 
-    batch_client = boto3.client("batch")
+            batch_client = boto3.client("batch")
 
-    try:
-        response = batch_client.submit_job(
-            jobName=f"process-logs-{timestamp}",
-            jobQueue=job_queue,
-            jobDefinition=job_definition,
-            containerOverrides={
-                "environment": [
-                    {"name": "MATCHED_BAGS", "value": json.dumps(matched_bags)},
-                    {"name": "CAR_ID", "value": car_id},
-                ]
-            },
-        )
-        logger.info(f"Batch job submitted successfully: {response['jobId']}")
-    except Exception as e:
-        logger.error(f"Error submitting batch job: {str(e)}")
-        raise
+            try:
+                response = batch_client.submit_job(
+                    jobName=f"process-logs-{timestamp}",
+                    jobQueue=job_queue,
+                    jobDefinition=job_definition,
+                    containerOverrides={
+                        "environment": [
+                            {"name": "MATCHED_BAGS", "value": json.dumps(matched_bags)},
+                            {"name": "CAR_ID", "value": car_id},
+                        ]
+                    },
+                )
+                logger.info(f"Batch job submitted successfully: {response['jobId']}")
+            except Exception as e:
+                logger.error(f"Error submitting batch job: {str(e)}")
+                raise
 
     return {"statusCode": 200, "body": json.dumps("Processing completed successfully")}
 

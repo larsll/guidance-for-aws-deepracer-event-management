@@ -7,7 +7,7 @@ import fnmatch
 import boto3
 import logging
 
-TMP_DIR = "/var/task/tmp"
+TMP_DIR = "/tmp"
 
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
@@ -217,6 +217,13 @@ def main():
             str(skip_duration),
             "--group_slice",
             group_slice,
+            "--update_frequency",
+            "1",
+            "--car_name",
+            matched_bags["car_name"],
+            "--delimiter",
+            "_",
+            "--unique",
         ]
         logger.info("Running command: %s", cmd)
         result = subprocess.run(cmd)
@@ -236,6 +243,8 @@ def main():
             subprocess.run(["ls", "-lR", TMP_DIR])
 
             sys.exit(exit_code)
+
+    logger.info("\nFinished processing videos...\n")
 
 
 if __name__ == "__main__":

@@ -201,7 +201,7 @@ export class CarLogsManager extends Construct {
         },
         resourceRequirements: [
           { type: 'VCPU', value: MAX_VCPU.toString() },
-          { type: 'MEMORY', value: '16384' },
+          { type: 'MEMORY', value: '32768' },
         ],
         executionRoleArn: taskExecutionRole.roleArn,
         jobRoleArn: taskRole.roleArn,
