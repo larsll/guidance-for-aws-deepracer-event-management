@@ -4,14 +4,24 @@ import * as appsync from 'aws-cdk-lib/aws-appsync';
 import * as batch from 'aws-cdk-lib/aws-batch';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import { GatewayVpcEndpointAwsService, InterfaceVpcEndpointAwsService } from 'aws-cdk-lib/aws-ec2';
+import { SubnetType } from 'aws-cdk-lib/aws-ec2';
 import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
-import { EventBus } from 'aws-cdk-lib/aws-events';
+import { EventBus, Rule } from 'aws-cdk-lib/aws-events';
+import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3notify from 'aws-cdk-lib/aws-s3-notifications';
-import { CodeFirstSchema } from 'awscdk-appsync-utils';
+import {
+  CodeFirstSchema,
+  Directive,
+  EnumType,
+  GraphqlType,
+  InputType,
+  ObjectType,
+  ResolvableField,
+} from 'awscdk-appsync-utils';
+import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { StandardLambdaPythonFunction } from './standard-lambda-python-function';
 import path = require('path');
@@ -43,7 +53,7 @@ export interface CarLogsManagerProps {
 export class CarLogsManager extends Construct {
   public readonly bagUploadBucket: s3.Bucket;
   public readonly carLogsBucket: s3.Bucket;
-  public readonly logsTable: dynamodb.Table;
+  public readonly assetsTable: dynamodb.Table;
   public readonly vpc: ec2.IVpc;
   public readonly jobQueue: batch.CfnJobQueue;
   public readonly jobDefinition: batch.CfnJobDefinition;
@@ -51,7 +61,7 @@ export class CarLogsManager extends Construct {
   constructor(scope: Construct, id: string, props: CarLogsManagerProps) {
     super(scope, id);
 
-    // Use existing VPC or create new one
+    // Use dedicated VPC
     this.vpc = new ec2.Vpc(this, 'LogsVPC', {
       maxAzs: 2,
       natGateways: 0,
@@ -59,23 +69,17 @@ export class CarLogsManager extends Construct {
         {
           cidrMask: 24,
           name: 'private',
-          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+          subnetType: SubnetType.PRIVATE_ISOLATED,
+        },
+        {
+          cidrMask: 24,
+          name: 'public',
+          subnetType: SubnetType.PUBLIC,
         },
       ],
     });
 
-    this.vpc.addGatewayEndpoint('S3Endpoint', { service: GatewayVpcEndpointAwsService.S3 });
-    this.vpc.addInterfaceEndpoint('ECREndpoint', {
-      service: InterfaceVpcEndpointAwsService.ECR,
-    });
-    this.vpc.addInterfaceEndpoint('ECRDockerEndpoint', {
-      service: InterfaceVpcEndpointAwsService.ECR_DOCKER,
-    });
-    this.vpc.addInterfaceEndpoint('CWEndpoint', {
-      service: InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
-    });
-
-    // Use existing bucket or create new one for logs
+    // Create the upload bucket
     this.bagUploadBucket = new s3.Bucket(this, 'upload', {
       encryption: s3.BucketEncryption.S3_MANAGED, // TODO change to KMS encryption CMK
       serverAccessLogsBucket: props.logsBucket,
@@ -122,18 +126,39 @@ export class CarLogsManager extends Construct {
       removalPolicy: RemovalPolicy.DESTROY,
       versioned: true,
       lifecycleRules: [
-        { expiration: Duration.days(15), tagFilters: { lifecycle: 'true' } },
+        { expiration: Duration.days(60), tagFilters: { lifecycle: 'true' } },
         { abortIncompleteMultipartUploadAfter: Duration.days(1) },
       ],
     });
 
     // Use existing table or create new one
-    this.logsTable = new dynamodb.Table(this, 'Table', {
-      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.STRING },
+    this.assetsTable = new dynamodb.Table(this, 'AssetsTable', {
+      partitionKey: {
+        name: 'sub',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'assetId',
+        type: dynamodb.AttributeType.STRING,
+      },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      timeToLiveAttribute: 'ttl',
+      encryption: dynamodb.TableEncryption.AWS_MANAGED,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    const OPERATOR_ASSETS_GSI_NAME = 'operatorAssetsIndexV2';
+    this.assetsTable.addGlobalSecondaryIndex({
+      indexName: OPERATOR_ASSETS_GSI_NAME,
+      partitionKey: {
+        name: 'gsiAvailableForOperator',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'gsiUploadedTimestamp',
+        type: dynamodb.AttributeType.NUMBER,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
 
     // Add this before your job definition
@@ -181,8 +206,8 @@ export class CarLogsManager extends Construct {
 
     // Grant permissions to task role
     this.carLogsBucket.grantReadWrite(taskRole);
-    this.logsTable.grantReadWriteData(taskRole);
     props.modelsBucket.grantRead(taskRole);
+    props.appsyncApi.api.grantMutation(taskRole, 'addCarLogsAsset');
 
     // Create Batch compute environment
     const computeEnv = new batch.CfnComputeEnvironment(this, 'ComputeEnv', {
@@ -191,7 +216,7 @@ export class CarLogsManager extends Construct {
       computeResources: {
         type: 'FARGATE_SPOT', // Changed to use Spot instances
         maxvCpus: MAX_VCPU,
-        subnets: this.vpc.privateSubnets.map((subnet) => subnet.subnetId),
+        subnets: this.vpc.selectSubnets({ subnetType: SubnetType.PUBLIC }).subnetIds,
         securityGroupIds: [batchSG.securityGroupId],
       },
       serviceRole: batchServiceRole.roleArn,
@@ -225,15 +250,15 @@ export class CarLogsManager extends Construct {
         executionRoleArn: taskExecutionRole.roleArn,
         jobRoleArn: taskRole.roleArn,
         networkConfiguration: {
-          assignPublicIp: 'DISABLED',
+          assignPublicIp: 'ENABLED',
         },
         environment: [
           { name: 'LOG_LEVEL', value: props.lambdaConfig.layersConfig.powerToolsLogLevel },
-          { name: 'LOGS_TABLE', value: this.logsTable.tableName },
           { name: 'LOGS_BUCKET', value: this.carLogsBucket.bucketName },
           { name: 'MODELS_BUCKET', value: props.modelsBucket.bucketName },
           { name: 'APPSYNC_URL', value: props.appsyncApi.api.graphqlUrl },
           { name: 'CODEC', value: 'avc1' },
+          { name: 'FRAME_LIMIT', value: '100' },
           { name: 'SKIP_DURATION', value: '20.0' },
           { name: 'RELATIVE_LABELS', value: 'true' },
         ],
@@ -258,7 +283,6 @@ export class CarLogsManager extends Construct {
       environment: {
         POWERTOOLS_SERVICE_NAME: 'processBatchOfBags',
         LOG_LEVEL: props.lambdaConfig.layersConfig.powerToolsLogLevel,
-        LOGS_TABLE: this.logsTable.tableName,
         BAGS_UPLOAD_BUCKET: this.bagUploadBucket.bucketName,
         OUTPUT_BUCKET: this.carLogsBucket.bucketName,
         JOB_QUEUE: this.jobQueue.ref,
@@ -278,10 +302,10 @@ export class CarLogsManager extends Construct {
     // Grant permissions to Lambda
     this.bagUploadBucket.grantRead(processorFunction);
     this.carLogsBucket.grantReadWrite(processorFunction);
-    this.logsTable.grantWriteData(processorFunction);
     props.appsyncApi.api.grantQuery(processorFunction, 'carsOnline');
     props.appsyncApi.api.grantQuery(processorFunction, 'getAllModels');
     props.appsyncApi.api.grantQuery(processorFunction, 'listUsers');
+    props.appsyncApi.api.grantMutation(processorFunction, 'addCarLogsAsset');
 
     // Grant permission to submit Batch jobs
     processorFunction.addToRolePolicy(
@@ -296,6 +320,186 @@ export class CarLogsManager extends Construct {
       s3.EventType.OBJECT_CREATED,
       new s3notify.LambdaDestination(processorFunction),
       { prefix: 'upload/', suffix: '.tar.gz' }
+    );
+
+    const assetsOnDeleteHandler = new StandardLambdaPythonFunction(this, 'AssetsOnDeleteHandler', {
+      entry: 'lib/lambdas/car_logs_on_delete/',
+      description:
+        'Generates a deleteCarLogsAsset mutation to delete the asset in the db as well as pushing update to FE',
+      runtime: props.lambdaConfig.runtime,
+      architecture: props.lambdaConfig.architecture,
+      environment: {
+        POWERTOOLS_SERVICE_NAME: 'car_logs_on_delete',
+        LOG_LEVEL: props.lambdaConfig.layersConfig.powerToolsLogLevel,
+        APPSYNC_URL: props.appsyncApi.api.graphqlUrl,
+      },
+      bundling: {
+        image: props.lambdaConfig.bundlingImage,
+      },
+      layers: [
+        props.lambdaConfig.layersConfig.helperFunctionsLayer,
+        props.lambdaConfig.layersConfig.appsyncHelpersLayer,
+        props.lambdaConfig.layersConfig.powerToolsLayer,
+      ],
+    });
+
+    const deleteLambdaFctS3ObjectDeleteRule = new Rule(this, 'DeleteLambdaFctS3ObjectDeleteRule', {
+      description: 'Calls Lambda function for assets deleted from S3',
+      eventPattern: {
+        source: ['aws.s3'],
+        detailType: ['Object Deleted'],
+        detail: {
+          bucket: {
+            name: [this.carLogsBucket.bucketName],
+          },
+        },
+      },
+      targets: [new LambdaFunction(assetsOnDeleteHandler)],
+    });
+
+    props.appsyncApi.api.grantMutation(assetsOnDeleteHandler, 'deleteCarLogsAsset');
+
+    // Create Lambda function for the CarLogs API
+    const carLogsAssetHandler = new StandardLambdaPythonFunction(this, 'ApiFunction', {
+      entry: 'lib/lambdas/car_logs_api/',
+      description: 'CarLogs Asset API resolver',
+      index: 'index.py',
+      handler: 'lambda_handler',
+      timeout: Duration.minutes(1),
+      runtime: props.lambdaConfig.runtime,
+      memorySize: 128,
+      architecture: props.lambdaConfig.architecture,
+      environment: {
+        DDB_TABLE: this.assetsTable.tableName,
+        OPERATOR_ASSETS_GSI_NAME: OPERATOR_ASSETS_GSI_NAME,
+        POWERTOOLS_SERVICE_NAME: 'carlogs API resolver',
+        LOG_LEVEL: props.lambdaConfig.layersConfig.powerToolsLogLevel,
+      },
+      bundling: {
+        image: props.lambdaConfig.bundlingImage,
+      },
+      layers: [props.lambdaConfig.layersConfig.helperFunctionsLayer, props.lambdaConfig.layersConfig.powerToolsLayer],
+    });
+
+    this.assetsTable.grantReadWriteData(carLogsAssetHandler);
+
+    // Define the data source for the API
+    const carLogsAssetDataSource = props.appsyncApi.api.addLambdaDataSource(
+      'CarLogsAssetDataSource',
+      carLogsAssetHandler
+    );
+
+    NagSuppressions.addResourceSuppressions(
+      carLogsAssetDataSource,
+      [
+        {
+          id: 'AwsSolutions-IAM5',
+          reason: 'Suppress wildcard that covers Lambda aliases in resource path',
+          appliesTo: [
+            {
+              regex: '/^Resource::(.+):\\*$/g',
+            },
+          ],
+        },
+      ],
+      true
+    );
+
+    // GraphQL API
+    const carLogsAssetType = new EnumType('CarLogsAssetTypeEnum', {
+      definition: ['BAG_SQLITE', 'VIDEO', 'NONE'],
+    });
+    props.appsyncApi.schema.addType(carLogsAssetType);
+
+    const assetMetadataObjectType = new ObjectType('AssetMetadata', {
+      definition: {
+        key: GraphqlType.string(),
+        filename: GraphqlType.string(),
+        uploadedDateTime: GraphqlType.awsDateTime(),
+      },
+      directives: [Directive.iam(), Directive.cognito('racer', 'admin', 'operator')], // TODO anyone who is logged in should have access to this
+    });
+
+    props.appsyncApi.schema.addType(assetMetadataObjectType);
+
+    const assetMetadataInputType = new InputType('AssetMetadataInput', {
+      definition: {
+        key: GraphqlType.string(),
+        filename: GraphqlType.string(),
+        uploadedDateTime: GraphqlType.awsDateTime(),
+      },
+      directives: [Directive.iam(), Directive.cognito('racer', 'admin', 'operator')], // TODO anyone who is logged in should have access to this
+    });
+
+    props.appsyncApi.schema.addType(assetMetadataInputType);
+
+    const carLogsAssetObjectType = new ObjectType('CarLogsAsset', {
+      definition: {
+        assetId: GraphqlType.id({ isRequired: true }),
+        sub: GraphqlType.id({ isRequired: true }),
+        username: GraphqlType.string({ isRequired: true }),
+        modelId: GraphqlType.string({ isRequired: true }),
+        modelname: GraphqlType.string(),
+        assetMetaData: assetMetadataObjectType.attribute(),
+        type: carLogsAssetType.attribute({ isRequired: true }),
+      },
+      directives: [Directive.iam(), Directive.cognito('racer', 'admin', 'operator', 'commentator')], // TODO anyone who is logged in should have access to this
+    });
+
+    props.appsyncApi.schema.addType(carLogsAssetObjectType);
+
+    const carLogsAssetObjectPagination = new ObjectType('CarLogsAssetPagination', {
+      definition: {
+        assets: carLogsAssetObjectType.attribute({ isList: true }),
+        nextToken: GraphqlType.string(),
+      },
+      directives: [Directive.iam(), Directive.cognito('racer', 'admin', 'operator', 'commentator')], // TODO anyone who is logged in should have access to this
+    });
+
+    props.appsyncApi.schema.addType(carLogsAssetObjectPagination);
+    props.appsyncApi.schema.addQuery(
+      'getAllCarLogsAssets',
+      new ResolvableField({
+        args: {
+          user_sub: GraphqlType.string({ isRequired: false }),
+          limit: GraphqlType.int({ isRequired: false }),
+          nextToken: GraphqlType.string({ isRequired: false }),
+        },
+        returnType: carLogsAssetObjectPagination.attribute(),
+        dataSource: carLogsAssetDataSource,
+        directives: [Directive.iam(), Directive.cognito('admin', 'operator', 'racer', 'commentator')],
+      })
+    );
+
+    props.appsyncApi.schema.addMutation(
+      'addCarLogsAsset',
+      new ResolvableField({
+        args: {
+          assetId: GraphqlType.id({ isRequired: true }),
+          sub: GraphqlType.id({ isRequired: true }),
+          username: GraphqlType.string(),
+          modelId: GraphqlType.string({ isRequired: true }),
+          modelname: GraphqlType.string(),
+          assetMetaData: assetMetadataInputType.attribute(),
+          type: carLogsAssetType.attribute(),
+        },
+        returnType: carLogsAssetObjectType.attribute(),
+        dataSource: carLogsAssetDataSource,
+        directives: [Directive.iam()],
+      })
+    );
+
+    props.appsyncApi.schema.addMutation(
+      'deleteCarLogsAsset',
+      new ResolvableField({
+        args: {
+          assetId: GraphqlType.id({ isRequired: true }),
+          sub: GraphqlType.id(),
+        },
+        returnType: carLogsAssetObjectType.attribute(),
+        dataSource: carLogsAssetDataSource,
+        directives: [Directive.iam(), Directive.cognito('racer', 'admin', 'operator')],
+      })
     );
 
     // Add tags

@@ -31,7 +31,9 @@ RUN pip3 install -U --no-cache-dir 'tensorflow-cpu<2.17' \
     pandas \
     'numpy<2' \
     python-dateutil \
-    tqdm
+    tqdm \
+    aws-lambda-powertools \
+    requests-aws4auth
 
 # Set up workspace
 ENV MPLCONFIGDIR=/var/task/.tmp/matplotlib

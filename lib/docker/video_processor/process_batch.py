@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
+import hashlib
 import json
 import os
 import sys
 import subprocess
-import fnmatch
 import boto3
 import logging
+
+from appsync_utils import send_mutation
+from aws_lambda_powertools.utilities.data_classes.appsync import scalar_types_utils
 
 TMP_DIR = "/tmp"
 
@@ -66,13 +69,80 @@ def download_bag_from_s3(bag, s3_bucket, input_dir) -> str:
 
 def upload_files_to_s3(folder, s3_bucket, s3_prefix) -> None:
 
+    uploaded_files = []
+
     for root, _, files in os.walk(folder):
         for file in files:
             file_path = os.path.join(root, file)
             s3_key = os.path.relpath(file_path, folder)
             s3_key = "/".join([s3_prefix, s3_key])
+            uploaded_files.append(s3_key)
             logger.info(f"Uploading {file_path} to s3://{s3_bucket}/{s3_key}")
             s3.upload_file(file_path, s3_bucket, s3_key)
+
+    return uploaded_files
+
+
+def create_dynamodb_entries(user_model_map: list[dict]) -> None:
+
+    logger.info("Creating DynamoDB entries for map: {}".format(user_model_map))
+
+    for user in user_model_map:
+        for model in user["models"]:
+            for video in model["videos"]:
+                variables = {
+                    "sub": user["sub"],
+                    "username": user["username"],
+                    "assetId": hashlib.sha256(
+                        video["file"].encode("utf-8")
+                    ).hexdigest(),
+                    "modelId": model["modelId"],
+                    "modelname": model["modelname"],
+                    "assetMetaData": {
+                        "key": video["file"],
+                        "filename": "",
+                        "uploadedDateTime": scalar_types_utils.aws_datetime(),
+                    },
+                    "type": "VIDEO",
+                }
+
+                logger.info(f"variables => {variables}")
+
+                query = """
+                mutation AddCarLogsAsset(
+                    $assetMetaData: AssetMetadataInput
+                    $assetId: ID!
+                    $modelname: String
+                    $modelId: String!
+                    $type: CarLogsAssetTypeEnum!
+                    $sub: ID!
+                    $username: String!
+                ) {
+                    addCarLogsAsset(
+                    assetId: $assetId
+                    assetMetaData: $assetMetaData
+                    modelId: $modelId
+                    modelname:  $modelname
+                    type: $type
+                    sub: $sub
+                    username: $username
+                    ) {
+                    assetId
+                    assetMetaData {
+                        filename
+                        key
+                        uploadedDateTime
+                    }
+                    modelId
+                    modelname
+                    type
+                    sub
+                    username
+                    }
+                }
+                """
+
+                send_mutation(query, variables)
 
 
 def main():
@@ -136,14 +206,43 @@ def main():
     skip_duration = float(os.getenv("SKIP_DURATION", 20.0))
     group_slice = os.getenv("GROUP_SLICE", ":-2")
 
-    unique_users = set()
+    user_model_map = []
 
     for bag in matched_bags["bags"]:
 
         logger.info(f"Processing bag: {bag}")
 
-        # Store the user
-        unique_users.add(bag["sub"])
+        # Store the user in our map
+        if not any(user_model["sub"] == bag["sub"] for user_model in user_model_map):
+            user_model_map.append(
+                {"sub": bag["sub"], "username": bag["username"], "models": []}
+            )
+
+        # Get the node of the current user
+        current_user = next(
+            user_model
+            for user_model in user_model_map
+            if user_model["sub"] == bag["sub"]
+        )
+
+        # Check if the current model is already in the user's models list
+        if not any(
+            model["modelId"] == bag["model"]["id"] for model in current_user["models"]
+        ):
+            current_user["models"].append(
+                {
+                    "modelId": bag["model"]["id"],
+                    "modelname": bag["model"]["name"],
+                    "videos": [],
+                }
+            )
+
+        # Get the node of the current model
+        current_model = next(
+            model
+            for model in current_user["models"]
+            if model["modelId"] == bag["model"]["id"]
+        )
 
         # Download the model and bag files from S3
         bag["model"]["local_path"] = download_model_from_s3(
@@ -154,7 +253,11 @@ def main():
         bag_path = bag["bag_local_path"]
         model_path = bag["model"]["local_path"]
         video_file = os.path.join(
-            output_dir, bag["sub"], "intermediate", os.path.basename(bag_path) + ".mp4"
+            output_dir,
+            bag["sub"],
+            bag["model"]["id"],
+            "intermediate",
+            os.path.basename(bag_path) + ".mp4",
         )
 
         os.makedirs(os.path.dirname(video_file), exist_ok=True)
@@ -195,54 +298,67 @@ def main():
 
     logger.info("\nFinished processing all bag files. Combining videos...\n")
 
-    for user in unique_users:
+    for user in user_model_map:
+        for model in user["models"]:
 
-        final_output_dir = os.path.join(output_dir, user, "final")
-        os.makedirs(final_output_dir, exist_ok=True)
-
-        # After processing all bag files, combine the videos
-        combine_videos_script = os.path.join(script_dir, "combine_videos.py")
-        cmd = [
-            "python3",
-            combine_videos_script,
-            "--input_dir",
-            os.path.join(output_dir, user, "intermediate"),
-            "--output_dir",
-            final_output_dir,
-            "--codec",
-            codec,
-            "--pattern",
-            pattern,
-            "--skip_duration",
-            str(skip_duration),
-            "--group_slice",
-            group_slice,
-            "--update_frequency",
-            "1",
-            "--car_name",
-            matched_bags["car_name"],
-            "--delimiter",
-            "_",
-            "--unique",
-        ]
-        logger.info("Running command: %s", cmd)
-        result = subprocess.run(cmd)
-        exit_code = result.returncode
-        if exit_code == 0:
-            logger.info(f"Finished combining videos for {user}")
-
-            upload_files_to_s3(
-                final_output_dir, logs_bucket, "/".join(["private", user, "videos"])
+            final_output_dir = os.path.join(
+                output_dir, user["sub"], model["modelId"], "final"
             )
+            os.makedirs(final_output_dir, exist_ok=True)
 
-        else:
-            logger.error(f"Error processing {bag_path}. Exiting with code {exit_code}")
+            # After processing all bag files, combine the videos
+            combine_videos_script = os.path.join(script_dir, "combine_videos.py")
+            cmd = [
+                "python3",
+                combine_videos_script,
+                "--input_dir",
+                os.path.join(output_dir, user["sub"], model["modelId"], "intermediate"),
+                "--output_dir",
+                final_output_dir,
+                "--codec",
+                codec,
+                "--pattern",
+                pattern,
+                "--skip_duration",
+                str(skip_duration),
+                "--group_slice",
+                group_slice,
+                "--update_frequency",
+                "1",
+                "--car_name",
+                matched_bags["car_name"],
+                "--delimiter",
+                "_",
+                "--unique",
+            ]
+            logger.info("Running command: %s", cmd)
+            result = subprocess.run(cmd)
+            exit_code = result.returncode
+            if exit_code == 0:
+                logger.info(f"Finished combining videos for {user}")
 
-            # Log the contents of the TMP_DIR
-            logger.info("Listing contents of TMP_DIR:")
-            subprocess.run(["ls", "-lR", TMP_DIR])
+                uploaded_files = upload_files_to_s3(
+                    final_output_dir,
+                    logs_bucket,
+                    "/".join(["private", user["sub"], "videos"]),
+                )
 
-            sys.exit(exit_code)
+                # Add the video file to the current model
+                for s3_key in uploaded_files:
+                    model["videos"].append({"file": s3_key})
+
+            else:
+                logger.error(
+                    f"Error processing {bag_path}. Exiting with code {exit_code}"
+                )
+
+                # Log the contents of the TMP_DIR
+                logger.info("Listing contents of TMP_DIR:")
+                subprocess.run(["ls", "-lR", TMP_DIR])
+
+                sys.exit(exit_code)
+
+    create_dynamodb_entries(user_model_map)
 
     logger.info("\nFinished processing videos...\n")
 

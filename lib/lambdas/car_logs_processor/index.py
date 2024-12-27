@@ -120,7 +120,66 @@ def lambda_handler(event: dict, context: LambdaContext) -> str:
                 logger.error(f"Error submitting batch job: {str(e)}")
                 raise
 
+            create_dynamodb_entries(matched_bags)
+
     return {"statusCode": 200, "body": json.dumps("Processing completed successfully")}
+
+
+def create_dynamodb_entries(matched_bags: dict) -> None:
+
+    for bag in matched_bags["bags"]:
+
+        variables = {
+            "sub": bag["sub"],
+            "username": bag["username"],
+            "assetId": hashlib.sha256(bag["bag_key"].encode("utf-8")).hexdigest(),
+            "modelId": bag["model"]["id"],
+            "modelname": bag["model"]["name"],
+            "assetMetaData": {
+                "key": bag["bag_key"],
+                "filename": "",
+                "uploadedDateTime": scalar_types_utils.aws_datetime(),
+            },
+            "type": "BAG_SQLITE",
+        }
+
+        logger.info(f"variables => {variables}")
+
+        query = """
+        mutation AddCarLogsAsset(
+            $assetMetaData: AssetMetadataInput
+            $assetId: ID!
+            $modelname: String
+            $modelId: String!
+            $type: CarLogsAssetTypeEnum!
+            $sub: ID!
+            $username: String!
+        ) {
+            addCarLogsAsset(
+            assetId: $assetId
+            assetMetaData: $assetMetaData
+            modelId: $modelId
+            modelname:  $modelname
+            type: $type
+            sub: $sub
+            username: $username
+            ) {
+            assetId
+            assetMetaData {
+                filename
+                key
+                uploadedDateTime
+            }
+            modelId
+            modelname
+            type
+            sub
+            username
+            }
+        }
+        """
+
+        appsync_helpers.send_mutation(query, variables)
 
 
 def find_user_and_model(all_users: list[dict], bag_dir: str) -> dict:
