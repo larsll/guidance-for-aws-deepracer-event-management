@@ -4,6 +4,7 @@ import * as appsync from 'aws-cdk-lib/aws-appsync';
 import * as batch from 'aws-cdk-lib/aws-batch';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import { GatewayVpcEndpointAwsService, InterfaceVpcEndpointAwsService } from 'aws-cdk-lib/aws-ec2';
 import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
 import { EventBus } from 'aws-cdk-lib/aws-events';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -53,7 +54,25 @@ export class CarLogsManager extends Construct {
     // Use existing VPC or create new one
     this.vpc = new ec2.Vpc(this, 'LogsVPC', {
       maxAzs: 2,
-      natGateways: 1,
+      natGateways: 0,
+      subnetConfiguration: [
+        {
+          cidrMask: 24,
+          name: 'private',
+          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+        },
+      ],
+    });
+
+    this.vpc.addGatewayEndpoint('S3Endpoint', { service: GatewayVpcEndpointAwsService.S3 });
+    this.vpc.addInterfaceEndpoint('ECREndpoint', {
+      service: InterfaceVpcEndpointAwsService.ECR,
+    });
+    this.vpc.addInterfaceEndpoint('ECRDockerEndpoint', {
+      service: InterfaceVpcEndpointAwsService.ECR_DOCKER,
+    });
+    this.vpc.addInterfaceEndpoint('CWEndpoint', {
+      service: InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
     });
 
     // Use existing bucket or create new one for logs
