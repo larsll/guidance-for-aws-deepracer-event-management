@@ -57,7 +57,7 @@ export class CarLogsManager extends Construct {
     });
 
     // Use existing bucket or create new one for logs
-    this.bagUploadBucket = new s3.Bucket(this, 'bag-upload-bucket', {
+    this.bagUploadBucket = new s3.Bucket(this, 'upload', {
       encryption: s3.BucketEncryption.S3_MANAGED, // TODO change to KMS encryption CMK
       serverAccessLogsBucket: props.logsBucket,
       serverAccessLogsPrefix: 'access-logs/upload_bucket/',
@@ -92,7 +92,7 @@ export class CarLogsManager extends Construct {
     this.bagUploadBucket.addCorsRule(corsRule);
 
     // Use existing bucket or create new one for output
-    this.carLogsBucket = new s3.Bucket(this, 'car-logs-bucket', {
+    this.carLogsBucket = new s3.Bucket(this, 'assets', {
       encryption: s3.BucketEncryption.S3_MANAGED, // TODO change to KMS encryption CMK
       serverAccessLogsBucket: props.logsBucket,
       serverAccessLogsPrefix: 'access-logs/car_logs_bucket/',
@@ -109,7 +109,7 @@ export class CarLogsManager extends Construct {
     });
 
     // Use existing table or create new one
-    this.logsTable = new dynamodb.Table(this, 'CarLogsTable', {
+    this.logsTable = new dynamodb.Table(this, 'Table', {
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
