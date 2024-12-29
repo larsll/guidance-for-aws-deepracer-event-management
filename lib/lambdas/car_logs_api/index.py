@@ -15,6 +15,8 @@ app = AppSyncResolver()
 
 CAR_LOGS_ASSETS_DDB_TABLE_NAME = os.environ["DDB_TABLE"]
 OPERATOR_ASSETS_GSI_NAME = os.environ["OPERATOR_ASSETS_GSI_NAME"]
+ASSETS_BUCKET = os.environ["ASSETS_BUCKET"]
+
 dynamodb = boto3.resource("dynamodb")
 ddbTable = dynamodb.Table(CAR_LOGS_ASSETS_DDB_TABLE_NAME)
 
@@ -148,8 +150,9 @@ def add_asset(**args):
 
 @app.resolver(type_name="Mutation", field_name="deleteCarLogsAsset")
 def delete_asset(assetId: str, sub: str):
-    logger.info(f"Delete Asset: assetID={assetId}")
     global identity
+
+    logger.info(f"Delete Asset: assetID={assetId}")
 
     # only allow the user to delete their own assets
     logger.info(f"Identity: {identity}, sub={sub}")
@@ -182,3 +185,34 @@ def delete_asset(assetId: str, sub: str):
         return response["Attributes"]
     else:
         return {"error": "User not authorized to delete this asset"}
+
+
+@app.resolver(type_name="Query", field_name="getCarLogsAssetsDownloadLinks")
+def download_assets(assetSubPairs: list):
+    global identity
+
+    logger.info(f"Downloading Assets: {assetSubPairs}")
+
+    assetLinks = []
+
+    # only allow the user or operators or adminhs to download assets
+    for asset in assetSubPairs:
+        assetId = asset["assetId"]
+        sub = asset["sub"]
+
+        if sub == identity["sub"] or __isUserOperatorOrAdmin(identity):
+            response = ddbTable.get_item(Key={"sub": sub, "assetId": assetId})
+            logger.info(response)
+
+            s3_key = response["Item"]["assetMetaData"]["key"]
+            download_link = client_s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": ASSETS_BUCKET, "Key": s3_key},
+                ExpiresIn=60,
+            )
+            assetLinks.append({"assetId": assetId, "downloadLink": download_link})
+
+    if len(assetLinks) > 0:
+        return assetLinks
+    else:
+        return {"error": "User not authorized to download this asset"}

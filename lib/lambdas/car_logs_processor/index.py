@@ -137,7 +137,7 @@ def create_dynamodb_entries(matched_bags: dict) -> None:
             "modelname": bag["model"]["name"],
             "assetMetaData": {
                 "key": bag["bag_key"],
-                "filename": "",
+                "filename": bag["bag_key"].split("/")[-1],
                 "uploadedDateTime": scalar_types_utils.aws_datetime(),
             },
             "type": "BAG_SQLITE",

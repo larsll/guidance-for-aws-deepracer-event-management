@@ -109,7 +109,7 @@ export class CarLogsManager extends Construct {
         // "http://localhost:3000",
         // "https://" + distribution.distribution_domain_name
       ],
-      exposedHeaders: ['x-amz-server-side-encryption', 'x-amz-request-id', 'x-amz-id-2', 'ETag'],
+      exposedHeaders: ['x-amz-server-side-encryption', 'x-amz-request-id', 'x-amz-id-2', 'x-amz-version-id', 'ETag'],
       maxAge: 3000,
     };
     this.bagUploadBucket.addCorsRule(corsRule);
@@ -130,6 +130,7 @@ export class CarLogsManager extends Construct {
         { abortIncompleteMultipartUploadAfter: Duration.days(1) },
       ],
     });
+    this.carLogsBucket.addCorsRule(corsRule);
 
     // Use existing table or create new one
     this.assetsTable = new dynamodb.Table(this, 'AssetsTable', {
@@ -371,8 +372,9 @@ export class CarLogsManager extends Construct {
       architecture: props.lambdaConfig.architecture,
       environment: {
         DDB_TABLE: this.assetsTable.tableName,
+        ASSETS_BUCKET: this.carLogsBucket.bucketName,
         OPERATOR_ASSETS_GSI_NAME: OPERATOR_ASSETS_GSI_NAME,
-        POWERTOOLS_SERVICE_NAME: 'carlogs API resolver',
+        POWERTOOLS_SERVICE_NAME: 'CarLogs Asset API resolver',
         LOG_LEVEL: props.lambdaConfig.layersConfig.powerToolsLogLevel,
       },
       bundling: {
@@ -380,7 +382,7 @@ export class CarLogsManager extends Construct {
       },
       layers: [props.lambdaConfig.layersConfig.helperFunctionsLayer, props.lambdaConfig.layersConfig.powerToolsLayer],
     });
-
+    this.carLogsBucket.grantRead(carLogsAssetHandler);
     this.assetsTable.grantReadWriteData(carLogsAssetHandler);
 
     // Define the data source for the API
@@ -499,6 +501,34 @@ export class CarLogsManager extends Construct {
         returnType: carLogsAssetObjectType.attribute(),
         dataSource: carLogsAssetDataSource,
         directives: [Directive.iam(), Directive.cognito('racer', 'admin', 'operator')],
+      })
+    );
+
+    const carLogsAssetsDownloadLinksType = new ObjectType('CarLogsAssetsDownloadLinks', {
+      definition: {
+        assetId: GraphqlType.id({ isRequired: true }),
+        downloadLink: GraphqlType.string({ isRequired: true }),
+      },
+    });
+    props.appsyncApi.schema.addType(carLogsAssetsDownloadLinksType);
+
+    const carLogsAssetSubPairsInput = new InputType('CarLogsAssetSubPairsInput', {
+      definition: {
+        assetId: GraphqlType.id({ isRequired: true }),
+        sub: GraphqlType.id({ isRequired: true }),
+      },
+    });
+    props.appsyncApi.schema.addType(carLogsAssetSubPairsInput);
+
+    props.appsyncApi.schema.addQuery(
+      'getCarLogsAssetsDownloadLinks',
+      new ResolvableField({
+        args: {
+          assetSubPairs: carLogsAssetSubPairsInput.attribute({ isRequired: true, isList: true }),
+        },
+        returnType: carLogsAssetsDownloadLinksType.attribute({ isList: true }),
+        dataSource: carLogsAssetDataSource,
+        directives: [Directive.cognito('racer', 'admin', 'operator')],
       })
     );
 

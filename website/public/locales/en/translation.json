@@ -23,6 +23,7 @@
     "clear-selected": "Clear selected",
     "clear-filters": "Clear filters",
     "confirm": "Confirm",
+    "download": "Download",
     "save": "Save",
     "save-changes": "Save changes",
     "delete": "Delete",
@@ -403,6 +404,7 @@
   "notifications.deleting-item": "Deleting {{itemType}} {{itemName}}...",
   "notifications.delete-item-success": "{{itemType}} {{itemName}} deleted",
   "notifications.delete-item-error": "{{itemType}} {{itemName}} could not be deleted, {{errorMessage}}",
+  "home.header": "DeepRacer Event Manager",
   "home.breadcrumb": "Home",
   "homeCards.homeCards.models-description": "Model management",
   "homeCards.homeCards.models": "Models",
@@ -426,6 +428,7 @@
   "models.models": "Models",
   "models.breadcrumb": "Model management",
   "models.models.breadcrumb": "Models",
+  "models.models.assets.breadcrumb": "Logs & Videos",
   "models.all-breadcrumb": "All models",
   "models.header": "Model management",
   "models.description": "Upload and manage your models.",
@@ -577,6 +580,7 @@
   "topnav.models-management": "Model management",
   "topnav.models": "Models",
   "topnav.models-own": "Model management",
+  "topnav.models-logsvideo": "Logs & Videos",
   "topnav.more": "More",
   "topnav.quarantined-models": "Quarantined models",
   "topnav.search": "Search",
@@ -671,5 +675,43 @@
   "upload-to-car-status.horizontal-bar.x-title": "Type",
   "upload-to-car-status.upload-time.header": "Upload times",
   "upload-to-car-status.upload-time.x-title": "Time (UTC)",
-  "upload-to-car-status.upload-time.y-title": "Seconds"
+  "upload-to-car-status.upload-time.y-title": "Seconds",
+  "carlogs": {
+    "assets": {
+      "header": "Car Logs & Videos",
+      "close-modal-ari-label": "Close modal",
+      "description": "Manage your car logs and videos.",
+      "operator.description": "Operators can view and manage car logs and videos.",
+      "delete-assets": "Delete selected assets",
+      "delete-asset": "Delete asset",
+      "delete-modal": {
+        "header": "Delete assets?",
+        "description": "Are you sure you want to delete the following assets?"
+      },
+      "download-asset": "Download asset",
+      "download-assets": "Download selected assets",
+      "download-modal": {
+        "header": "Download assets",
+        "description": "Are you sure you want to download the following assets?"
+      },
+      "model-information": "Model Information",
+      "model-name": "Model Name",
+      "type": "Type",
+      "filename": "Filename",
+      "upload-date": "Upload Date",
+      "user-name": "Username",
+      "status": "Status",
+      "loading-models": "Loading models...",
+      "types": {
+        "video": "Video",
+        "bag_sqlite": "ROS Bag - SQLite"
+      },
+      "notifications": {
+        "downloading": "Downloading file",
+        "download-successful": "Downloaded file",
+        "download-failed": "Could not download file",
+        "dismiss-message": "Dismiss message"
+      }
+    }
+  }
 }
