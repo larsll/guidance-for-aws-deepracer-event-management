@@ -502,6 +502,65 @@ export class CarLogsManager extends Construct {
       })
     );
 
+    // Allow users in operator or admin groups to subscribe to all model updates
+    // Allow users not in these groups to subscribe only to their own model updates
+    const subscriptionPermissions = `
+        #set($groups = $context.identity.claims.get("cognito:groups"))
+        #set($isOperator = false)
+
+        #foreach($group in $groups)
+            #if($group == "operator" || $group == "admin")
+                #set($isOperator = true)
+            #end
+        #end
+
+        #if($context.identity.sub == $context.args.sub)
+            {
+            "version": "2018-05-29",
+            "payload": $util.toJson($context.arguments.entry)
+        }
+        #elseif($isOperator == true)
+            {
+            "version": "2018-05-29",
+            "payload": $util.toJson($context.arguments.entry)
+        }
+        #else
+            $utils.unauthorized()
+        #end
+        `;
+
+    props.appsyncApi.schema.addSubscription(
+      'onAddedCarLogsAsset',
+      new ResolvableField({
+        args: {
+          sub: GraphqlType.id(),
+        },
+        returnType: carLogsAssetObjectType.attribute(),
+        dataSource: props.appsyncApi.noneDataSource,
+        requestMappingTemplate: appsync.MappingTemplate.fromString(subscriptionPermissions),
+        responseMappingTemplate: appsync.MappingTemplate.fromString(
+          `
+            $util.toJson($context.result)
+            `
+        ),
+        directives: [Directive.subscribe('addCarLogsAsset')], // , Directive.cognito('admin')],
+      })
+    );
+
+    props.appsyncApi.schema.addSubscription(
+      'onDeletedCarLogsAsset',
+      new ResolvableField({
+        args: {
+          sub: GraphqlType.id(),
+        },
+        returnType: carLogsAssetObjectType.attribute(),
+        dataSource: props.appsyncApi.noneDataSource,
+        requestMappingTemplate: appsync.MappingTemplate.fromString(subscriptionPermissions),
+        responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($context.result)'),
+        directives: [Directive.subscribe('deleteCarLogsAsset')],
+      })
+    );
+
     // Add tags
     cdk.Tags.of(this).add('Purpose', 'CarLogsProcessing');
   }

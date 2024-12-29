@@ -20,7 +20,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> str:
     sub = s3_key_parts[1]
     type = s3_key_parts[2]
 
-    if type == "video":
+    if type == "videos":
         key_end = s3_key_parts[3]
     elif type == "logs":
         # For logs we only delete the entry when the metadata.yaml is deleted
@@ -51,8 +51,15 @@ def lambda_handler(event: dict, context: LambdaContext) -> str:
           sub: $sub
         ) {
           assetId
+          assetMetaData {
+            key
+            uploadedDateTime
+          }
+          modelId
+          modelname
           sub
           type
+          username
         }
       }
     """
