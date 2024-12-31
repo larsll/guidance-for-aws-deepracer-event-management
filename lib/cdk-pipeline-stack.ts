@@ -12,7 +12,7 @@ import { DeepracerEventManagerStack } from './drem-app-stack';
 
 // Constants
 const NODE_VERSION = '18'; // other possible options: stable, latest, lts
-const CDK_VERSION = '2.122.0'; // other possible options: latest
+const CDK_VERSION = '2.166.0'; // other possible options: latest
 const AMPLIFY_VERSION = '12.8.2';
 
 export interface InfrastructurePipelineStageProps extends cdk.StackProps {
@@ -85,6 +85,7 @@ export class CdkPipelineStack extends cdk.Stack {
       synth: new pipelines.CodeBuildStep('SynthAndDeployBackend', {
         buildEnvironment: {
           buildImage: codebuild.LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0,
+          computeType: codebuild.ComputeType.LARGE,
         },
         input: pipelines.CodePipelineSource.gitHub(props.sourceRepo, props.sourceBranchName, {
           authentication: cdk.SecretValue.secretsManager('drem/github-token'),
@@ -303,5 +304,6 @@ export class CdkPipelineStack extends cdk.Stack {
       ],
       targets: [topic],
     });
+    rule.node.addDependency(topic.node.findChild('Policy'));
   }
 }
