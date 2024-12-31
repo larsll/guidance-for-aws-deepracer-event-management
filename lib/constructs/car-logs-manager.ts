@@ -83,7 +83,7 @@ export class CarLogsManager extends Construct {
     this.bagUploadBucket = new s3.Bucket(this, 'upload', {
       encryption: s3.BucketEncryption.S3_MANAGED, // TODO change to KMS encryption CMK
       serverAccessLogsBucket: props.logsBucket,
-      serverAccessLogsPrefix: 'access-logs/upload_bucket/',
+      serverAccessLogsPrefix: 'access-logs/car_logs_upload_bucket/',
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
       autoDeleteObjects: true,
