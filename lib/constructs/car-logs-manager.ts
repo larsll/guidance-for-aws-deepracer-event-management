@@ -26,6 +26,8 @@ import { Construct } from 'constructs';
 import { StandardLambdaPythonFunction } from './standard-lambda-python-function';
 import path = require('path');
 
+import { CarLogsFetchStepFunction } from './car-logs-fetch';
+
 const MAX_VCPU = 16;
 
 export interface CarLogsManagerProps {
@@ -590,6 +592,12 @@ export class CarLogsManager extends Construct {
         directives: [Directive.subscribe('deleteCarLogsAsset')],
       })
     );
+
+    // Create Step Function for fetching logs
+    new CarLogsFetchStepFunction(this, 'CarLogsFetch', this.bagUploadBucket, {
+      appsyncApi: props.appsyncApi,
+      lambdaConfig: props.lambdaConfig,
+    });
 
     // Add tags
     cdk.Tags.of(this).add('Purpose', 'CarLogsProcessing');
