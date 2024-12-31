@@ -18,7 +18,7 @@ EXTRACTED_DIR = "/tmp/extracted"
 
 @logger.inject_lambda_context
 def lambda_handler(event: dict, context: LambdaContext) -> str:
-    logger.debug(json.dumps(event))
+    logger.info(json.dumps(event))
 
     # Create a temporary directory for extraction
     tmp_dir = EXTRACTED_DIR
@@ -32,7 +32,11 @@ def lambda_handler(event: dict, context: LambdaContext) -> str:
     # Theoretically we can receive more than one file
 
     for record in event["Records"]:
-        if record["eventName"] == "ObjectCreated:CompleteMultipartUpload":
+        if record["eventName"] in [
+            "ObjectCreated:CompleteMultipartUpload",
+            "ObjectCreated:Put",
+            "ObjectCreated:Post",
+        ]:
             bucket = record["s3"]["bucket"]["name"]
             key = record["s3"]["object"]["key"]
             logger.info(f"Processing file {key} from bucket {bucket}")

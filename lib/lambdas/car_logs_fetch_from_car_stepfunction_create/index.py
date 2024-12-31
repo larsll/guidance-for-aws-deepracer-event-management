@@ -26,6 +26,7 @@ def lambda_handler(event, context):
     carIpAddress = event["data"]["carIpAddress"]
     eventId = event["data"]["eventId"]
     eventName = event["data"]["eventName"]
+    laterThan = event["data"]["laterThan"]
     startTime = scalar_types_utils.aws_datetime()
     status = "Created"
 
@@ -40,13 +41,14 @@ def lambda_handler(event, context):
         "carIpAddress": carIpAddress,
         "eventId": eventId,
         "eventName": eventName,
+        "laterThan": laterThan,
         "startTime": startTime,
         "status": status,
     }
 
     try:
-        query = """mutation createStartFetchFromCarDbEntry($carFleetId: String!, $carFleetName: String!, $carInstanceId: String!, $carIpAddress: String!, $carName: String!, $jobId: ID!, $startTime: AWSDateTime!, $status: String!, $eventId: ID!, $eventName: String!) {
-            createStartFetchFromCarDbEntry(carFleetId: $carFleetId, carFleetName: $carFleetName, carInstanceId: $carInstanceId, carIpAddress: $carIpAddress, carName: $carName, jobId: $jobId, startTime: $startTime, status: $status, eventId: $eventId, eventName: $eventName) {
+        query = """mutation createStartFetchFromCarDbEntry($carFleetId: String!, $carFleetName: String!, $carInstanceId: String!, $carIpAddress: String!, $carName: String!, $jobId: ID!, $startTime: AWSDateTime!, $status: String!, $eventId: ID!, $eventName: String!, laterThan: AWSDateTime) {
+            createStartFetchFromCarDbEntry(carFleetId: $carFleetId, carFleetName: $carFleetName, carInstanceId: $carInstanceId, carIpAddress: $carIpAddress, carName: $carName, jobId: $jobId, startTime: $startTime, status: $status, eventId: $eventId, eventName: $eventName, laterThan: $laterThan) {
                 carFleetId
                 carFleetName
                 carInstanceId
@@ -54,6 +56,7 @@ def lambda_handler(event, context):
                 carName
                 eventId
                 eventName
+                laterThan
                 jobId
                 startTime
                 status

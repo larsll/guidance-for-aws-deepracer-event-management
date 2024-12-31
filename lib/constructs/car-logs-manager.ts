@@ -262,7 +262,7 @@ export class CarLogsManager extends Construct {
           { name: 'APPSYNC_URL', value: props.appsyncApi.api.graphqlUrl },
           { name: 'CODEC', value: 'avc1' },
           // { name: 'FRAME_LIMIT', value: '100' }, // For testing
-          { name: 'SKIP_DURATION', value: '20.0' },
+          { name: 'SKIP_DURATION', value: '5.0' },
           { name: 'RELATIVE_LABELS', value: 'true' },
         ],
         logConfiguration: {

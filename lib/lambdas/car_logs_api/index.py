@@ -159,7 +159,7 @@ def delete_asset(assetId: str, sub: str):
 
     identitySub = identity.get("sub")
 
-    if identitySub == sub or identitySub is None:
+    if identitySub == sub or identitySub is None or __isUserOperatorOrAdmin(identity):
         ddb_update_expressions = dynamo_helpers.generate_update_query(
             {"type": "NONE", "assetMetaData": {}}
         )
@@ -184,7 +184,7 @@ def delete_asset(assetId: str, sub: str):
 
         return response["Attributes"]
     else:
-        return {"error": "User not authorized to delete this asset"}
+        raise Exception("User not authorized to delete this asset")
 
 
 @app.resolver(type_name="Query", field_name="getCarLogsAssetsDownloadLinks")
@@ -215,4 +215,4 @@ def download_assets(assetSubPairs: list):
     if len(assetLinks) > 0:
         return assetLinks
     else:
-        return {"error": "User not authorized to download this asset"}
+        raise Exception("User not authorized to download these assets")
