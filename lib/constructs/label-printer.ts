@@ -6,10 +6,11 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { NagSuppressions } from 'cdk-nag';
-import { StandardLambdaPythonFunction } from './standard-lambda-python-function';
 
+import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
 import { CodeFirstSchema, Directive, GraphqlType, ObjectType, ResolvableField } from 'awscdk-appsync-utils';
 import { Construct } from 'constructs';
+import { StandardLambdaDockerImageFuncion } from './standard-lambda-docker-image-function';
 
 export interface LabelPrinterProps {
   logsbucket: IBucket;
@@ -64,33 +65,14 @@ export class LabelPrinter extends Construct {
       expiration: Duration.days(10),
     });
 
-    // Layers
-    const printFunctionsLambdaLayer = new lambdaPython.PythonLayerVersion(this, 'print_functions', {
-      entry: 'lib/lambda_layers/print_functions/',
-      compatibleArchitectures: [props.lambdaConfig.architecture],
-      compatibleRuntimes: [props.lambdaConfig.runtime],
-      bundling: {
-        image: props.lambdaConfig.bundlingImage,
-      },
-    });
-
-    // Functions
-    const printLabelLambdaFunction = new StandardLambdaPythonFunction(this, 'print_label_function', {
-      entry: 'lib/lambdas/print_label_function/',
-      index: 'index.py',
-      handler: 'lambda_handler',
+    const printLabelLambdaFunction = new StandardLambdaDockerImageFuncion(this, 'print_label_func', {
+      description: 'Print Label',
+      code: lambda.DockerImageCode.fromImageAsset('lib/lambdas/print_label_function', {
+        platform: Platform.LINUX_AMD64,
+      }),
       timeout: Duration.minutes(1),
-      runtime: props.lambdaConfig.runtime,
+      architecture: lambda.Architecture.X86_64,
       memorySize: 256,
-      architecture: props.lambdaConfig.architecture,
-      bundling: {
-        image: props.lambdaConfig.bundlingImage,
-      },
-      layers: [
-        printFunctionsLambdaLayer,
-        props.lambdaConfig.layersConfig.helperFunctionsLayer,
-        props.lambdaConfig.layersConfig.powerToolsLayer,
-      ],
       environment: {
         LABELS_S3_BUCKET: labels_bucket.bucketName,
         URL_EXPIRY: '36000',
@@ -101,35 +83,7 @@ export class LabelPrinter extends Construct {
     });
 
     props.carStatusDataHandlerLambda.grantInvoke(printLabelLambdaFunction);
-
-    // Bucket permissions
-    const printLabelLambdaFunctionAdditionalRolePolicyS3 = printLabelLambdaFunction.addAdditionalRolePolicy(
-      'printLabelLambdaFunctionAdditionalRolePolicyS3',
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          's3:DeleteObject',
-          's3:DeleteObjectTagging',
-          's3:GetObject',
-          's3:ListBucket',
-          's3:PutObject',
-          's3:PutObjectTagging',
-        ],
-        resources: [labels_bucket.bucketArn, labels_bucket.arnForObjects('*')],
-      })
-    );
-
-    NagSuppressions.addResourceSuppressionsByPath(stack, printLabelLambdaFunctionAdditionalRolePolicyS3.resourcePath, [
-      {
-        id: 'AwsSolutions-IAM5',
-        reason: 'Allows printLabelLambdaFunction to create and delete labels in dedicated s3 bucket',
-        appliesTo: [
-          {
-            regex: '/^Resource::(.+)/\\*$/g',
-          },
-        ],
-      },
-    ]);
+    labels_bucket.grantReadWrite(printLabelLambdaFunction);
 
     // AppSync Api
     const printableLabelDataSource = props.appsyncApi.api.addLambdaDataSource(

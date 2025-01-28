@@ -28,7 +28,7 @@ client = boto3.client("lambda")
 
 
 @logger.inject_lambda_context
-def lambda_handler(event: dict, context: LambdaContext) -> str:
+def handler(event: dict, context: LambdaContext) -> str:
     logger.debug(event)
     logger.debug(context)
 
