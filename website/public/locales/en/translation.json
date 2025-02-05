@@ -252,6 +252,7 @@
     "breadcrumb": "Devices",
     "type": "Device type",
     "car-information": "Device information",
+    "core-sw-version": "Core software",
     "device-links": "Device links",
     "device-links.timer": "Timer console",
     "device-links.car": "Car console",
@@ -270,7 +271,12 @@
     "registration-date": "Registration date",
     "filter-deepracer": "DeepRacer car",
     "filter-timer": "Timer",
-    "cars": "Cars"
+    "cars": "Cars",
+    "notifications": {
+      "dismiss-message": "Dismiss message",
+      "label-ready": "Car Label is ready for ",
+      "error-label": "Error creating car label for"
+    }
   },
   "events": {
     "events-information": "Event information",
