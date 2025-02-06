@@ -7,7 +7,7 @@ import {
   Header,
   Modal,
   Select,
-  SpaceBetween
+  SpaceBetween,
 } from '@cloudscape-design/components';
 import { useMachine } from '@xstate/react';
 import React, { useEffect, useRef, useState } from 'react';
@@ -44,7 +44,9 @@ export const RacePage = ({
 }) => {
   const { t } = useTranslation(['translation', 'help-admin-timekeeper-race-page']);
   const [state] = useStore();
-  const cars = [defaultCar].concat(state.cars.cars.filter((car) => car.PingStatus === 'Online'));
+  const cars = [defaultCar].concat(
+    state.cars.cars.filter((car) => car.PingStatus === 'Online' && car.Type === 'deepracer')
+  );
   const [warningModalVisible, setWarningModalVisible] = useState(false);
   const [currentLap, SetCurrentLap] = useState(defaultLap);
   const lapsForOverlay = useRef([]);
@@ -59,7 +61,7 @@ export const RacePage = ({
   const [btnUndoFalseFinish, setBtnUndoFalseFinish] = useState(true);
   const [btnEndRace, setBtnEndRace] = useState(false);
   const [btnStartRace, setBtnStartRace] = useState(false);
-  const [currentCar, setCurrentCar] = useState(defaultCar)
+  const [currentCar, setCurrentCar] = useState(defaultCar);
 
   const [
     carResetCounter,
@@ -317,12 +319,15 @@ export const RacePage = ({
                 <span>
                   <Header variant="h5">{t('timekeeper.current-car')}:</Header>
                   <Select
-                    selectedOption={{ label: currentCar.ComputerName, value: currentCar.Computername }}
-                    onChange={({ detail }) => {
-                      setCurrentCar(detail.selectedOption.value)
+                    selectedOption={{
+                      label: currentCar.ComputerName,
+                      value: currentCar.Computername,
                     }}
-                    options={cars.map(car => {
-                        return { label: car['ComputerName'], value: car }
+                    onChange={({ detail }) => {
+                      setCurrentCar(detail.selectedOption.value);
+                    }}
+                    options={cars.map((car) => {
+                      return { label: car['ComputerName'], value: car };
                     })}
                   />
                 </span>
