@@ -235,8 +235,10 @@ export const CarModelUploadModal = ({ modelsToUpload }) => {
     (car) => car.PingStatus === 'Online' && car.Type === 'deepracer'
   );
   const [eventSelectModalVisible, setEventSelectModalVisible] = useState(false);
-  const columnConfiguration = ColumnConfiguration();
 
+  const [columnConfiguration] = useState(() =>
+    ColumnConfiguration(['carName', 'fleetName', 'carIp'])
+  );
   const [preferences, setPreferences] = useState({
     ...DefaultPreferences,
     visibleContent: columnConfiguration.defaultVisibleColumns,
