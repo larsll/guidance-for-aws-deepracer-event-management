@@ -39,6 +39,7 @@ export const RacePage = ({
   raceConfig,
   onNext,
   selectedCar,
+  setStartTime,
 }) => {
   const { t } = useTranslation(['translation', 'help-admin-timekeeper-race-page']);
   const [state] = useStore();
@@ -92,6 +93,7 @@ export const RacePage = ({
       },
       startTimer: () => {
         setStartButtonText(t('timekeeper.pause-race'));
+        setStartTime(new Date());
         startTimers();
         // Buttons
         toggleBtnState(false);

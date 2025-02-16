@@ -37,6 +37,7 @@ import styles from './racePage.module.css';
 export const RacePage = ({
   raceInfo,
   setRaceInfo,
+  setStartTime,
   fastestLap,
   fastestAverageLap,
   raceConfig,
@@ -93,6 +94,7 @@ export const RacePage = ({
         setBtnStartRace(true);
       },
       startTimer: () => {
+        setStartTime(new Date());
         setStartButtonText(t('timekeeper.pause-race'));
         startTimers();
         // Buttons
