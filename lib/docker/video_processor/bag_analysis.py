@@ -91,7 +91,7 @@ def process_worker(
     """
 
     result_list, list_lock = result
-    flip_x = bag_info["flip_x"]
+    flip_x = bag_info.get("flip_x", False)
     fig = create_plot(
         action_names, flip_x, HEIGHT, WIDTH, 72, transparent=(background is not None)
     )
