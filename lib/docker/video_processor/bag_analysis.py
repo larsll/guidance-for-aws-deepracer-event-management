@@ -458,10 +458,11 @@ def analyze_bag(bag_path: str, metadata: ModelMetadata) -> Dict:
     bag_info["step_diff"] = step_diff + 1
     bag_info["step_actual"] = len(df.index)
     bag_info["elapsed_time"] = df["timestamp"].max()
-    bag_info["action_space_size"] = len(msg.results)
     bag_info["image_shape"] = tmp_img.shape
-    bag_info["action_space"] = metadata.action_space.action_space
-    bag_info["flip_x"] = metadata.action_space.action_space[0]["steering_angle"] < 0
+    if metadata.action_space_type == "discrete":
+        bag_info["action_space_size"] = len(msg.results)
+        bag_info["action_space"] = metadata.action_space.action_space
+        bag_info["flip_x"] = metadata.action_space.action_space[0]["steering_angle"] < 0
 
     return bag_info
 
