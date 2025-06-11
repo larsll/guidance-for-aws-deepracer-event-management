@@ -194,22 +194,24 @@ def create_plot(
         spine.set_edgecolor(COLOR_EDGE)
         spine.set_linewidth(1)
 
-    if flip_x:
-        action_names_display = action_names[::-1]
-    else:
-        action_names_display = action_names
+    # Action names means we have a discrete action spaceq
+    if len(action_names) > 0:
+        if flip_x:
+            action_names_display = action_names[::-1]
+        else:
+            action_names_display = action_names
 
-    for i, label in enumerate(action_names_display):
-        ax2.text(
-            i,
-            0.5,
-            label,
-            ha="center",
-            va="center",
-            rotation=90,
-            color=COLOR_TEXT_SECONDARY,
-            fontproperties=FONT_SMALL,
-        )
+        for i, label in enumerate(action_names_display):
+            ax2.text(
+                i,
+                0.5,
+                label,
+                ha="center",
+                va="center",
+                rotation=90,
+                color=COLOR_TEXT_SECONDARY,
+                fontproperties=FONT_SMALL,
+            )
 
     return fig
 
@@ -287,15 +289,17 @@ def create_img(
     ax[0].imshow(img)
     ax[1].imshow(grad_img)
 
-    # Highlight the highest bar in a different color
-    bar_colors = [COLOR_EDGE] * len(car_result["probability"])
-    max_index = car_result["probability"].idxmax()
-    bar_colors[max_index] = COLOR_HIGHLIGHT
+    # If there are action_names it is a discrete action space
+    if len(action_names) > 0:
+        # Highlight the highest bar in a different color
+        bar_colors = [COLOR_EDGE] * len(car_result["probability"])
+        max_index = car_result["probability"].idxmax()
+        bar_colors[max_index] = COLOR_HIGHLIGHT
 
-    if flip_x:
-        ax[2].bar(x, car_result["probability"][::-1], color=bar_colors[::-1])
-    else:
-        ax[2].bar(x, car_result["probability"], color=bar_colors)
+        if flip_x:
+            ax[2].bar(x, car_result["probability"][::-1], color=bar_colors[::-1])
+        else:
+            ax[2].bar(x, car_result["probability"], color=bar_colors)
 
     fig.canvas.draw()
 
@@ -485,35 +489,36 @@ def process_file(
 
     # Prepare action names
     action_names = []
-    action_space = metadata.action_space.action_space
-    max_steering_angle = max(float(action["steering_angle"]) for action in action_space)
-    max_speed = max(float(action["speed"]) for action in action_space)
+    if metadata.action_space_type == "discrete":
+        action_space = metadata.action_space.action_space
+        max_steering_angle = max(
+            float(action["steering_angle"]) for action in action_space
+        )
+        max_speed = max(float(action["speed"]) for action in action_space)
 
-    for action in action_space:
-        if args.relative_labels:
-            if float(action["steering_angle"]) == 0.0:
-                steering_label = "C"
+        for action in action_space:
+            if args.relative_labels:
+                if float(action["steering_angle"]) == 0.0:
+                    steering_label = "C"
+                else:
+                    steering_label = "L" if float(action["steering_angle"]) > 0 else "R"
+                steering_value = abs(
+                    float(action["steering_angle"]) * 100 / max_steering_angle
+                )
+                speed_value = float(action["speed"]) * 100 / max_speed
+                action_names.append(
+                    f"{steering_label}{steering_value:.0f}% x {speed_value:.0f}%"
+                )
             else:
-                steering_label = "L" if float(action["steering_angle"]) > 0 else "R"
-            steering_value = abs(
-                float(action["steering_angle"]) * 100 / max_steering_angle
-            )
-            speed_value = float(action["speed"]) * 100 / max_speed
-            action_names.append(
-                f"{steering_label}{steering_value:.0f}% x {speed_value:.0f}%"
-            )
-        else:
-            action_names.append(
-                str(action["steering_angle"])
-                + "\N{DEGREE SIGN}"
-                + " "
-                + "%.1f" % action["speed"]
-            )
+                action_names.append(
+                    str(action["steering_angle"])
+                    + "\N{DEGREE SIGN}"
+                    + " "
+                    + "%.1f" % action["speed"]
+                )
 
     bag_info = analyze_bag(bag_path, metadata)
     utils.print_baginfo(bag_info)
-
-    # flip_x = action_space[0]['steering_angle'] < 0
 
     # Key data points
     worker_count = int((psutil.cpu_count(logical=False)) * 3 / 4)
@@ -740,9 +745,6 @@ def main():
         print("Using model archive: {}".format(args.model))
     else:
         raise ValueError("Model path must be a directory or a tar.gz/tgz file")
-
-    if metadata.action_space_type == "continuous":
-        raise NotImplementedError("Continuous action space not supported.")
 
     bag_path = args.bag_path.rstrip("/")
     if not os.path.exists(bag_path):
