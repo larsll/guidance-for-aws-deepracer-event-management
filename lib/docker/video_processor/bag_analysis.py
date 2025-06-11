@@ -742,7 +742,7 @@ def main():
         raise ValueError("Model path must be a directory or a tar.gz/tgz file")
 
     if metadata.action_space_type == "continuous":
-        return NotImplementedError("Continuous action space not supported.")
+        raise NotImplementedError("Continuous action space not supported.")
 
     bag_path = args.bag_path.rstrip("/")
     if not os.path.exists(bag_path):
