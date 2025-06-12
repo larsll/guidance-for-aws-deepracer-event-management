@@ -91,10 +91,11 @@ def process_worker(
         Exception: If an error occurs during frame processing.
     """
 
-    result_list, list_lock = result
-    flip_x = bag_info.get("flip_x", False)
-
     try:
+        result_list, list_lock = result
+        # flip_x = bag_info.get("flip_x", False)
+        flip_x = bag_info["flip_x"]
+
         fig = create_plot(
             action_names,
             flip_x,
@@ -654,7 +655,7 @@ def process_file(
         expected_index = 1
         received = 0
         error_count = 0
-        max_errors = 10  # Set a threshold for maximum errors
+        max_errors = 5  # Set a threshold for maximum errors
 
         while True:
             try:
