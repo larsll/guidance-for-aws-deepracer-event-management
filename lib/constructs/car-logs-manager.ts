@@ -279,7 +279,6 @@ export class CarLogsManager extends Construct {
           { name: 'MODELS_BUCKET', value: props.modelsBucket.bucketName },
           { name: 'APPSYNC_URL', value: props.appsyncApi.api.graphqlUrl },
           { name: 'CODEC', value: 'avc1' },
-          // { name: 'FRAME_LIMIT', value: '100' }, // For testing
           { name: 'SKIP_DURATION', value: '5.0' },
           { name: 'RELATIVE_LABELS', value: 'true' },
         ],
@@ -291,6 +290,9 @@ export class CarLogsManager extends Construct {
             'awslogs-stream-prefix': 'logs-processor',
           },
         },
+      },
+      timeout: {
+        attemptDurationSeconds: 7200, // 2 hour timeout
       },
     });
 
