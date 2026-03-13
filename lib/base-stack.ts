@@ -21,6 +21,7 @@ export interface BaseStackProps extends cdk.StackProps {
   email: string;
   labelName: string;
   domainName?: string;
+  droaUserPoolId?: string;
 }
 
 export class BaseStack extends cdk.Stack {
@@ -173,13 +174,16 @@ export class BaseStack extends cdk.Stack {
         layersConfig: { ...lambdaLayers },
       },
       eventbus: this.eventbridge.eventbus,
+      existingUserPoolId: props.droaUserPoolId,
     });
 
-    // protect cognito with WAF
-    new wafv2.CfnWebACLAssociation(this, 'cognitoWafAssociation', {
-      webAclArn: wafWebAclRegional.attrArn,
-      resourceArn: `arn:${this.partition}:cognito-idp:${this.region}:${this.account}:userpool/${this.idp.userPool.userPoolId}`,
-    });
+    // protect cognito with WAF (only when DREM owns the pool)
+    if (!this.idp.isImportedPool) {
+      new wafv2.CfnWebACLAssociation(this, 'cognitoWafAssociation', {
+        webAclArn: wafWebAclRegional.attrArn,
+        resourceArn: `arn:${this.partition}:cognito-idp:${this.region}:${this.account}:userpool/${this.idp.userPool.userPoolId}`,
+      });
+    }
   }
 
   lambdaLayers = (

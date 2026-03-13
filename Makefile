@@ -24,6 +24,12 @@ else
 domain_name_arg =
 endif
 
+ifdef droa_user_pool_id
+droa_args = -c DROA_USER_POOL_ID=$(droa_user_pool_id)
+else
+droa_args =
+endif
+
 ## CONSTANTS
 dremSrcPath := website/src
 leaderboardSrcPath := website-leaderboard/src
@@ -47,10 +53,10 @@ clean: pipeline.clean s3.clean
 ## Dev related targets
 
 pipeline.synth: 				## Synth the CDK pipeline
-	npx cdk synth -c email=$(email) -c label=$(label) -c account=$(account_id) -c region=$(region) -c source_branch=$(source_branch) -c source_repo=$(source_repo) $(domain_name_arg)
+	npx cdk synth -c email=$(email) -c label=$(label) -c account=$(account_id) -c region=$(region) -c source_branch=$(source_branch) -c source_repo=$(source_repo) $(domain_name_arg) $(droa_args)
 
 pipeline.deploy: 				## Deploy the CDK pipeline
-	npx cdk deploy -c email=$(email) -c label=$(label) -c account=$(account_id) -c region=$(region) -c source_branch=$(source_branch) -c source_repo=$(source_repo) $(domain_name_arg)
+	npx cdk deploy -c email=$(email) -c label=$(label) -c account=$(account_id) -c region=$(region) -c source_branch=$(source_branch) -c source_repo=$(source_repo) $(domain_name_arg) $(droa_args)
 
 pipeline.clean: 				## Destroys the CDK pipeline
 	npx cdk destroy -c email=$(email) -c label=$(label) -c account=$(account_id) -c region=$(region) -c source_branch=$(source_branch) -c source_repo=$(source_repo)
@@ -62,13 +68,13 @@ drem.clean-base:			## Delete DREM application
 	aws cloudformation delete-stack --stack-name drem-backend-$(label)-base --region $(region)
 
 manual.deploy:  				## Deploy via cdk
-	npx cdk deploy --c manual_deploy=True -c email=$(email) -c label=$(label) -c account=$(account_id) -c region=$(region) -c source_branch=$(source_branch) -c source_repo=$(source_repo) $(domain_name_arg) --all
+	npx cdk deploy --c manual_deploy=True -c email=$(email) -c label=$(label) -c account=$(account_id) -c region=$(region) -c source_branch=$(source_branch) -c source_repo=$(source_repo) $(domain_name_arg) $(droa_args) --all
 
 manual.deploy.specific:         ## Deploy a specific stack (usage: make manual.deploy.specific stack=YourStackName)
-	npx cdk deploy --c manual_deploy=True -c email=$(email) -c label=$(label) -c account=$(account_id) -c region=$(region) -c source_branch=$(source_branch) -c source_repo=$(source_repo) $(domain_name_arg) -e $(stack)
+	npx cdk deploy --c manual_deploy=True -c email=$(email) -c label=$(label) -c account=$(account_id) -c region=$(region) -c source_branch=$(source_branch) -c source_repo=$(source_repo) $(domain_name_arg) $(droa_args) -e $(stack)
 
 manual.deploy.hotswap: 			## Deploy via cdk --hotswap
-	npx cdk deploy --c manual_deploy=True -c email=$(email) -c label=$(label) -c account=$(account_id) -c region=$(region) -c source_branch=$(source_branch) -c source_repo=$(source_repo) $(domain_name_arg) --all --hotswap
+	npx cdk deploy --c manual_deploy=True -c email=$(email) -c label=$(label) -c account=$(account_id) -c region=$(region) -c source_branch=$(source_branch) -c source_repo=$(source_repo) $(domain_name_arg) $(droa_args) --all --hotswap
 
 manual.deploy.website: local.config
 	cd website && npm run build

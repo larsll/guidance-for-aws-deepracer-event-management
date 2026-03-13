@@ -206,13 +206,6 @@ export default function App() {
           async validateCustomSignUp(formData: SignUpFormData): Promise<ValidationErrors> {
             const errors: ValidationErrors = {};
 
-            const validUsername = new RegExp(
-              '^(?=.{2,20}$)(?![_.])(?!.*[_.]{2})[a-zA-Z0-9._]+(?<![_.])$'
-            );
-
-            if (!validUsername.test(formData.username)) {
-              errors['username'] = t('app.signup.username-error');
-            }
             if (!formData.acknowledgement) {
               errors['acknowledgement'] = t('app.signup.acknowledgement');
             }
@@ -222,8 +215,8 @@ export default function App() {
             return errors;
           },
         }}
+        loginMechanisms={['email']}
         hideSignUp={false}
-        signUpAttributes={['email']}
       >
         {({ signOut, user }) => (
           <main>
