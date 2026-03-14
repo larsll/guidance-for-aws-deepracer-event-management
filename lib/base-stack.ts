@@ -178,7 +178,7 @@ export class BaseStack extends cdk.Stack {
     });
 
     // protect cognito with WAF (only when DREM owns the pool)
-    if (!this.idp.isImportedPool) {
+    if (!this.idp.useExistingUserPool) {
       new wafv2.CfnWebACLAssociation(this, 'cognitoWafAssociation', {
         webAclArn: wafWebAclRegional.attrArn,
         resourceArn: `arn:${this.partition}:cognito-idp:${this.region}:${this.account}:userpool/${this.idp.userPool.userPoolId}`,

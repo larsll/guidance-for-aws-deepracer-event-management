@@ -37,20 +37,20 @@ export class Idp extends Construct {
   public readonly commentatorGroupRole: iam.IRole;
   public readonly registrationGroupRole: iam.IRole;
   public readonly unauthenticated_user_role: iam.IRole;
-  public readonly isImportedPool: boolean;
+  public readonly useExistingUserPool: boolean;
 
   constructor(scope: Construct, id: string, props: IdpProps) {
     super(scope, id);
 
     const stack = cdk.Stack.of(this);
 
-    const importing = !!props.existingUserPoolId;
-    this.isImportedPool = importing;
+    const useExistingUserPool = !!props.existingUserPoolId;
+    this.useExistingUserPool = useExistingUserPool;
 
     let userPool: cognito.IUserPool;
     let pre_token_generation_lambda: StandardLambdaPythonFunction | undefined;
 
-    if (!importing) {
+    if (!useExistingUserPool) {
       const pre_sign_up_lambda = new StandardLambdaPythonFunction(this, 'pre_sign_up_lambda', {
         entry: 'lib/lambdas/cognito_triggers/',
         description: 'Cognito pre sign up Lambda',
@@ -296,7 +296,7 @@ export class Idp extends Construct {
       roles: {
         authenticated: authUserRole.roleArn,
       },
-      roleMappings: importing
+      roleMappings: useExistingUserPool
         ? {
             // Rules-based: map DRoA group names directly to DREM IAM roles
             mapping: {
@@ -321,13 +321,13 @@ export class Idp extends Construct {
                   {
                     claim: 'cognito:groups',
                     matchType: 'Contains',
-                    value: 'commentator',
+                    value: 'dr-commentator',
                     roleArn: commentatorGroupRole.roleArn,
                   },
                   {
                     claim: 'cognito:groups',
                     matchType: 'Contains',
-                    value: 'registration',
+                    value: 'dr-registration',
                     roleArn: registrationGroupRole.roleArn,
                   },
                 ],
@@ -348,7 +348,7 @@ export class Idp extends Construct {
       pre_token_generation_lambda.addEnvironment('default_user_group_role_parameter', defaultUserPoolRoleParameter);
     }
 
-    if (!importing) {
+    if (!useExistingUserPool) {
       //  Cognito User Group (Racers)
       new cognito.CfnUserPoolGroup(this, 'RacerGroup', {
         userPoolId: userPool.userPoolId,
@@ -385,25 +385,25 @@ export class Idp extends Construct {
       });
       adminUser.node.addDependency(adminGroup);
       adminUser.node.addDependency(userPool);
+
+      //  Cognito User Group (Commentator)
+      new cognito.CfnUserPoolGroup(this, 'CommentatorGroup', {
+        userPoolId: userPool.userPoolId,
+        description: 'Commentator user group',
+        groupName: 'commentator',
+        precedence: 1,
+        roleArn: commentatorGroupRole.roleArn,
+      });
+
+      //  Cognito User Group (Registration)
+      new cognito.CfnUserPoolGroup(this, 'RegistrationGroup', {
+        userPoolId: userPool.userPoolId,
+        description: 'Registration user group',
+        groupName: 'registration',
+        precedence: 1,
+        roleArn: registrationGroupRole.roleArn,
+      });
     }
-
-    //  Cognito User Group (Commentator) — no DRoA equivalent, always created
-    new cognito.CfnUserPoolGroup(this, 'CommentatorGroup', {
-      userPoolId: userPool.userPoolId,
-      description: 'Commentator user group',
-      groupName: 'commentator',
-      precedence: 1,
-      roleArn: commentatorGroupRole.roleArn,
-    });
-
-    //  Cognito User Group (Registration) — no DRoA equivalent, always created
-    new cognito.CfnUserPoolGroup(this, 'RegistrationGroup', {
-      userPoolId: userPool.userPoolId,
-      description: 'Registration user group',
-      groupName: 'registration',
-      precedence: 1,
-      roleArn: registrationGroupRole.roleArn,
-    });
   }
 }
 
