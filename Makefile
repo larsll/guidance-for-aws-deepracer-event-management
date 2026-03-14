@@ -81,6 +81,16 @@ manual.deploy.website: local.config
 	aws s3 sync website/build/ s3://$$(jq -r '.[] | select(.OutputKey=="sourceBucketName") | .OutputValue' cfn.outputs)/ --delete
 	aws cloudfront create-invalidation --distribution-id $$(jq -r '.[] | select(.OutputKey=="distributionId") | .OutputValue' cfn.outputs) --paths "/*"
 
+manual.deploy.leaderboard: local.config
+	cd website-leaderboard && npm run build
+	aws s3 sync website-leaderboard/build/ s3://$$(jq -r '.[] | select(.OutputKey=="leaderboardSourceBucketName") | .OutputValue' cfn.outputs)/ --delete
+	aws cloudfront create-invalidation --distribution-id $$(jq -r '.[] | select(.OutputKey=="leaderboardDistributionId") | .OutputValue' cfn.outputs) --paths "/*"
+
+manual.deploy.stream-overlays: local.config
+	cd website-stream-overlays && npm run build
+	aws s3 sync website-stream-overlays/build/ s3://$$(jq -r '.[] | select(.OutputKey=="streamingOverlaySourceBucketName") | .OutputValue' cfn.outputs)/ --delete
+	aws cloudfront create-invalidation --distribution-id $$(jq -r '.[] | select(.OutputKey=="streamingOverlayDistributionId") | .OutputValue' cfn.outputs) --paths "/*"
+
 local.install:					## Install Javascript dependencies
 	npm install
 
