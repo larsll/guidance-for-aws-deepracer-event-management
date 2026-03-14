@@ -24,10 +24,7 @@ export const useUsersApi = (userHasAccess = false) => {
   }
 
   function getUserRacerName(item) {
-    const preferredUsername = item.Attributes.filter((obj) => {
-      return obj.Name === 'preferred_username';
-    });
-    return preferredUsername.length > 0 ? preferredUsername[0].Value : item.Username;
+    return item.racerName || item.Username;
   }
 
   // Convert user roles to a comma delimited string
@@ -116,36 +113,9 @@ export const useUsersApi = (userHasAccess = false) => {
     }
     return () => {
       if (subscription) {
-        console.debug('deregister onUserCreated subscription');
+        console.debug('deregister onUserUpdated subscription');
         subscription.unsubscribe();
       }
     };
   }, [dispatch, userHasAccess]);
-
-  // subscribe to user updates
-  useEffect(() => {
-    let subscription;
-    if (userHasAccess) {
-      subscription = API.graphql(graphqlOperation(onUserUpdated)).subscribe({
-        next: (event) => {
-          console.debug('onUserUpdated received', event);
-          const user = event.value.data.onUserUpdated;
-          const enrichedUser = {
-            ...user,
-            Email: getUserEmail(user),
-            CountryCode: getUserCountryCode(user),
-            RacerName: getUserRacerName(user),
-            Roles: parseRoles(user),
-          };
-
-          dispatch('UPDATE_USER', enrichedUser);
-        },
-      });
-    }
-    return () => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
-  }, [userHasAccess, dispatch]);
 };

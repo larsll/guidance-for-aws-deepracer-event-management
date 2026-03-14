@@ -59,6 +59,7 @@ class InfrastructurePipelineStage extends Stage {
       identiyPool: baseStack.idp.identityPool,
       userPoolClientWeb: baseStack.idp.userPoolClientWeb,
       dremWebsiteBucket: baseStack.dremWebsitebucket,
+      useExternalIdp: baseStack.idp.useExistingUserPool,
       eventbus: baseStack.eventbridge.eventbus,
     });
 

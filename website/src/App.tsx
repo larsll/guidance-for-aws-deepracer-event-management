@@ -1,10 +1,10 @@
 import {
-  Authenticator,
-  CheckboxField,
-  Link,
-  useAuthenticator,
-  useTheme,
-  View,
+    Authenticator,
+    CheckboxField,
+    Link,
+    useAuthenticator,
+    useTheme,
+    View,
 } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import { Amplify, type ResourcesConfig } from 'aws-amplify';
@@ -28,17 +28,17 @@ import { useTranslation } from 'react-i18next';
  * Form data structure for custom sign up validation
  */
 interface SignUpFormData {
-  username: string;
-  acknowledgement?: string;
-  'custom:countryCode'?: string;
-  [key: string]: any;
+    username: string;
+    acknowledgement?: string;
+    'custom:countryCode'?: string;
+    [key: string]: any;
 }
 
 /**
  * Validation errors object
  */
 interface ValidationErrors {
-  [key: string]: string;
+    [key: string]: string;
 }
 
 /**
@@ -47,63 +47,63 @@ interface ValidationErrors {
  * so the CDK scripts don't need to change.
  */
 interface LegacyConfig {
-  Auth: {
-    region: string;
-    userPoolId: string;
-    userPoolWebClientId: string;
-    identityPoolId: string;
-  };
-  Storage: {
-    region: string;
-    bucket: string;
-    uploadBucket: string;
-    identityPoolId: string;
-  };
-  API: {
-    aws_appsync_graphqlEndpoint: string;
-    aws_appsync_region: string;
-    aws_appsync_authenticationType: string;
-  };
-  Urls?: {
-    termsAndConditionsUrl: string;
-    leaderboardWebsite?: string;
-    streamingOverlayWebsite?: string;
-  };
-  Rum?: {
-    drem: {
-      config: string;
-      id: string;
-      region: string;
+    Auth: {
+        region: string;
+        userPoolId: string;
+        userPoolWebClientId: string;
+        identityPoolId: string;
     };
-  };
+    Storage: {
+        region: string;
+        bucket: string;
+        uploadBucket: string;
+        identityPoolId: string;
+    };
+    API: {
+        aws_appsync_graphqlEndpoint: string;
+        aws_appsync_region: string;
+        aws_appsync_authenticationType: string;
+    };
+    Urls?: {
+        termsAndConditionsUrl: string;
+        leaderboardWebsite?: string;
+        streamingOverlayWebsite?: string;
+    };
+    Rum?: {
+        drem: {
+            config: string;
+            id: string;
+            region: string;
+        };
+    };
 }
 
 const config = awsconfig as LegacyConfig;
 
 /** Map legacy config.json → Amplify v6 ResourcesConfig */
 function buildAmplifyConfig(legacy: LegacyConfig): ResourcesConfig {
-  return {
-    Auth: {
-      Cognito: {
-        userPoolId: legacy.Auth.userPoolId,
-        userPoolClientId: legacy.Auth.userPoolWebClientId,
-        identityPoolId: legacy.Auth.identityPoolId,
-      },
-    },
-    API: {
-      GraphQL: {
-        endpoint: legacy.API.aws_appsync_graphqlEndpoint,
-        region: legacy.API.aws_appsync_region,
-        defaultAuthMode: 'userPool',
-      },
-    },
-    Storage: {
-      S3: {
-        bucket: legacy.Storage.bucket,
-        region: legacy.Storage.region,
-      },
-    },
-  };
+    return {
+        Auth: {
+            Cognito: {
+                userPoolId: legacy.Auth.userPoolId,
+                userPoolClientId: legacy.Auth.userPoolWebClientId,
+                identityPoolId: legacy.Auth.identityPoolId,
+            },
+        },
+        API: {
+            GraphQL: {
+                endpoint: legacy.API.aws_appsync_graphqlEndpoint,
+                region: legacy.API.aws_appsync_region,
+                defaultAuthMode: 'userPool',
+            },
+        },
+        Storage: {
+            S3: {
+                bucket: legacy.Storage.bucket,
+                region: legacy.Storage.region,
+            },
+        },
+    };
 }
 
 I18n.putVocabularies(translations);
@@ -118,116 +118,133 @@ initDataStores();
 
 let awsRum: AwsRum | null = null;
 try {
-  const rumConfig = JSON.parse(config.Rum?.drem.config || '{}');
-  const APPLICATION_ID = config.Rum?.drem.id || '';
-  const APPLICATION_VERSION = '1.0.0';
-  const APPLICATION_REGION = config.Rum?.drem.region || '';
+    const rumConfig = JSON.parse(config.Rum?.drem.config || '{}');
+    const APPLICATION_ID = config.Rum?.drem.id || '';
+    const APPLICATION_VERSION = '1.0.0';
+    const APPLICATION_REGION = config.Rum?.drem.region || '';
 
-  /*eslint no-unused-vars: ["error", { "varsIgnorePattern": "awsRum" }]*/
-  if (APPLICATION_ID && APPLICATION_REGION) {
-    awsRum = new AwsRum(APPLICATION_ID, APPLICATION_VERSION, APPLICATION_REGION, rumConfig);
-  }
+    /*eslint no-unused-vars: ["error", { "varsIgnorePattern": "awsRum" }]*/
+    if (APPLICATION_ID && APPLICATION_REGION) {
+        awsRum = new AwsRum(APPLICATION_ID, APPLICATION_VERSION, APPLICATION_REGION, rumConfig);
+    }
 } catch (error) {
-  // Ignore errors thrown during CloudWatch RUM web client initialization
+    // Ignore errors thrown during CloudWatch RUM web client initialization
 }
 
 const components = {
-  Header() {
-    // const { tokens } = useTheme();
+    Header() {
+        // const { tokens } = useTheme();
 
-    return <img src="/logo-bw.png" alt="Logo" width={300} height={300} className="center" />;
-  },
-
-  SignUp: {
-    FormFields() {
-      const { validationErrors } = useAuthenticator();
-
-      return (
-        <>
-          {/* Re-use default `Authenticator.SignUp.FormFields` */}
-          <Authenticator.SignUp.FormFields />
-
-          <CountrySelector 
-            amplify={true} 
-            description={Array.isArray(validationErrors.countryCode) ? validationErrors.countryCode[0] : validationErrors.countryCode} 
-          />
-
-          {/* Append & require Terms & Conditions field to sign up  */}
-          <CheckboxField
-            errorMessage={Array.isArray(validationErrors.acknowledgement) ? validationErrors.acknowledgement[0] : validationErrors.acknowledgement}
-            hasError={!!validationErrors.acknowledgement}
-            name="acknowledgement"
-            value="yes"
-            label={i18next.t('app.signup.acknowledgement-label')}
-          />
-        </>
-      );
+        return <img src="/logo-bw.png" alt="Logo" width={300} height={300} className="center" />;
     },
-  },
 
-  Footer() {
-    const { tokens } = useTheme();
+    SignUp: {
+        FormFields() {
+            const { validationErrors } = useAuthenticator();
 
-    return (
-      <View textAlign="center" padding={tokens.space.large}>
-        <Link
-          href={(config.Urls?.termsAndConditionsUrl || '') + '/terms-and-conditions.html'}
-          target="_blank"
-        >
-          {i18next.t('app.signup.terms-and-conditions')}
-        </Link>
-      </View>
-    );
-  },
+            return (
+                <>
+                    {/* Re-use default `Authenticator.SignUp.FormFields` */}
+                    <Authenticator.SignUp.FormFields />
+
+                    <CountrySelector
+                        amplify={true}
+                        description={
+                            Array.isArray(validationErrors.countryCode)
+                                ? validationErrors.countryCode[0]
+                                : validationErrors.countryCode
+                        }
+                    />
+
+                    {/* Append & require Terms & Conditions field to sign up  */}
+                    <CheckboxField
+                        errorMessage={
+                            Array.isArray(validationErrors.acknowledgement)
+                                ? validationErrors.acknowledgement[0]
+                                : validationErrors.acknowledgement
+                        }
+                        hasError={!!validationErrors.acknowledgement}
+                        name="acknowledgement"
+                        value="yes"
+                        label={i18next.t('app.signup.acknowledgement-label')}
+                    />
+                </>
+            );
+        },
+    },
+
+    Footer() {
+        const { tokens } = useTheme();
+
+        return (
+            <View textAlign="center" padding={tokens.space.large}>
+                <Link
+                    href={(config.Urls?.termsAndConditionsUrl || '') + '/terms-and-conditions.html'}
+                    target="_blank"
+                >
+                    {i18next.t('app.signup.terms-and-conditions')}
+                </Link>
+            </View>
+        );
+    },
 };
 
 export default function App() {
-  const { t } = useTranslation();
-  // https://github.com/aws-amplify/amplify-ui/blob/main/packages/ui/src/i18n/dictionaries/authenticator/en.ts
-  I18n.putVocabularies({
-    en: {
-      'Sign In': t('app.signup.signin'),
-      'Create Account': t('app.signup.create-account'),
-      Username: t('app.signup.username'),
-      'Enter your Username': t('app.signup.enter-your-username'),
-      Password: t('app.signup.password'),
-      'Enter your Password': t('app.signup.enter-your-password'),
-      'Forgot password?': t('app.signup.forgot-your-password'),
-      'Please confirm your Password': t('app.signup.confirm-password'),
-      'Enter your Email': t('app.signup.enter-your-email'),
-    },
-  });
+    const { t } = useTranslation();
+    // https://github.com/aws-amplify/amplify-ui/blob/main/packages/ui/src/i18n/dictionaries/authenticator/en.ts
+    I18n.putVocabularies({
+        en: {
+            'Sign In': t('app.signup.signin'),
+            'Create Account': t('app.signup.create-account'),
+            Username: t('app.signup.username'),
+            'Enter your Username': t('app.signup.enter-your-username'),
+            Password: t('app.signup.password'),
+            'Enter your Password': t('app.signup.enter-your-password'),
+            'Forgot password?': t('app.signup.forgot-your-password'),
+            'Please confirm your Password': t('app.signup.confirm-password'),
+            'Enter your Email': t('app.signup.enter-your-email'),
+        },
+    });
 
-  return (
-    <Suspense fallback="loading">
-      <Authenticator
-        components={components}
-        services={{
-          async validateCustomSignUp(formData: SignUpFormData): Promise<ValidationErrors> {
-            const errors: ValidationErrors = {};
+    return (
+        <Suspense fallback="loading">
+            <Authenticator
+                components={components}
+                services={{
+                    async validateCustomSignUp(
+                        formData: SignUpFormData
+                    ): Promise<ValidationErrors> {
+                        const errors: ValidationErrors = {};
 
-            if (!formData.acknowledgement) {
-              errors['acknowledgement'] = t('app.signup.acknowledgement');
-            }
-            if (!formData['custom:countryCode']) {
-              errors['countryCode'] = t('app.signup.select-your-country');
-            }
-            return errors;
-          },
-        }}
-        loginMechanisms={['email']}
-        hideSignUp={false}
-      >
-        {({ signOut, user }) => (
-          <main>
-            <StoreProvider>
-              <Router>
-                <TopNav user={user?.username || ''} signout={signOut} />
-              </Router>
-            </StoreProvider>
-          </main>
-        )}
-      </Authenticator>
-    </Suspense>
-  );
+                        if (!formData.acknowledgement) {
+                            errors['acknowledgement'] = t('app.signup.acknowledgement');
+                        }
+                        if (!formData['custom:countryCode']) {
+                            errors['countryCode'] = t('app.signup.select-your-country');
+                        }
+                        return errors;
+                    },
+                }}
+                loginMechanisms={['email']}
+                hideSignUp={awsconfig.Features?.useExternalIdp ?? false}
+            >
+                {({ signOut, user }) => (
+                    <main>
+                        <StoreProvider>
+                            <Router>
+                                <TopNav
+                                    user={
+                                        user.attributes?.['custom:racerName'] ||
+                                        user.attributes?.preferred_username ||
+                                        user.username
+                                    }
+                                    signout={signOut}
+                                />
+                            </Router>
+                        </StoreProvider>
+                    </main>
+                )}
+            </Authenticator>
+        </Suspense>
+    );
 }

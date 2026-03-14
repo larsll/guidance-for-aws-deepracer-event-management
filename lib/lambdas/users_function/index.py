@@ -39,6 +39,11 @@ def __get_user(username: str) -> dict:
     user = response["Users"][0]
     logger.info(user)
     user["sub"] = __extract_user_attribute(user["Attributes"], "sub")
+    user["racerName"] = (
+        __extract_user_attribute(user["Attributes"], "custom:racerName")
+        or __extract_user_attribute(user["Attributes"], "preferred_username")
+        or user["Username"]
+    )
     logger.info(user)
     return clean_json(user)
 
@@ -75,9 +80,14 @@ def __get_users(username_prefix=None) -> list:
     # batches of results to appsync end point...
     all_users = [item for sublist in users for item in sublist]
 
-    # pull "sub" out to top level of user object
+    # pull "sub" and "racerName" out to top level of user object
     for user in all_users:
         user["sub"] = __extract_user_attribute(user["Attributes"], "sub")
+        user["racerName"] = (
+            __extract_user_attribute(user["Attributes"], "custom:racerName")
+            or __extract_user_attribute(user["Attributes"], "preferred_username")
+            or user["Username"]
+        )
 
     return all_users
 
@@ -173,6 +183,8 @@ def create_user(username: str, email: str, countryCode: str):
             UserAttributes=[
                 {"Name": "email", "Value": email},
                 {"Name": "custom:countryCode", "Value": countryCode},
+                {"Name": "preferred_username", "Value": username},
+                {"Name": "custom:racerName", "Value": username},
             ],
             DesiredDeliveryMediums=[
                 "EMAIL",
@@ -211,6 +223,27 @@ def updateUser(username: str, roles: list):
         user = __get_user(username)
 
     return {**user, "Roles": roles}
+
+
+@app.resolver(type_name="Mutation", field_name="updateUserAttributes")
+def update_user_attributes(
+    username: str, preferredUsername: str, countryCode: str = None
+):
+    attributes = [
+        {"Name": "preferred_username", "Value": preferredUsername},
+        {"Name": "custom:racerName", "Value": preferredUsername},
+    ]
+    if countryCode is not None:
+        attributes.append({"Name": "custom:countryCode", "Value": countryCode})
+
+    cognito_client.admin_update_user_attributes(
+        UserPoolId=user_pool_id,
+        Username=username,
+        UserAttributes=attributes,
+    )
+
+    user = __get_user(username)
+    return user
 
 
 def __add_user_to_group(username: str, group_name: str):

@@ -107,6 +107,7 @@ if (app.node.tryGetContext('manual_deploy') === 'True') {
     identiyPool: baseStack.idp.identityPool,
     userPoolClientWeb: baseStack.idp.userPoolClientWeb,
     dremWebsiteBucket: baseStack.dremWebsitebucket,
+    useExternalIdp: baseStack.idp.useExistingUserPool,
     eventbus: baseStack.eventbridge.eventbus,
     env: env,
   });
