@@ -118,10 +118,6 @@ const getPermissions = (groups) => {
       admin: false,
       registration: false,
     };
-    permissions.api = {
-      ...permissions.api,
-      users: false,
-    };
   }
 
   return permissions;
