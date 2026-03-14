@@ -54,11 +54,12 @@ def __get_users(username_prefix=None) -> list:
     # Base filter for enabled users
     filter_string = 'status = "Enabled"'
 
-    # Use username prefix filter instead if provided
+    # Use preferred_username prefix filter instead if provided
+    # preferred_username is lowercased by Cognito, so we lowercase the prefix
     if username_prefix:
         # Escape quotes in the prefix to prevent injection
-        safe_prefix = username_prefix.replace('"', '\\"')
-        filter_string = f'username ^= "{safe_prefix}"'
+        safe_prefix = username_prefix.lower().replace('"', '\\"')
+        filter_string = f'preferred_username ^= "{safe_prefix}"'
 
     logger.debug(f"Filter string: {filter_string}")
 
