@@ -8,6 +8,7 @@ import Container from '@cloudscape-design/components/container';
 import Header from '@cloudscape-design/components/header';
 import KeyValuePairs from '@cloudscape-design/components/key-value-pairs';
 
+import awsconfig from '../../config.json';
 import { graphqlMutate } from '../../graphql/graphqlHelpers';
 import * as mutations from '../../graphql/mutations';
 import { authChangePassword, authSignOut, getCurrentAuthUser } from '../../hooks/useAuth';
@@ -50,12 +51,8 @@ const ProfileHome: React.FC<ProfileHomeProps> = (props) => {
             getCurrentAuthUser().then((authUser) => {
                 setUsername(authUser.username);
                 setIdentityId(authUser.identityId);
-                // setEmail(authUser.attributes?.email);
-                // setRacerName(
-                //  authUser.attributes?.['custom:racerName'] ||
-                //    authUser.attributes?.preferred_username ||
-                //    user.username
-                // );
+                setEmail(authUser.attributes['email']);
+                setRacerName(authUser.displayName);
             });
         };
 
@@ -131,8 +128,8 @@ const ProfileHome: React.FC<ProfileHomeProps> = (props) => {
             <div>{children}</div>
         </div>
     );
-    // const isExternalIdp = awsconfig.Features?.useExternalIdp;
-    const isExternalIdp = false; // TODO: need to find a way to determine this on the frontend without access to awsconfig
+
+    const isExternalIdp = awsconfig.Features?.useExternalIdp;
 
     return (
         <>
