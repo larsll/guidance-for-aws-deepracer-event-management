@@ -1,4 +1,10 @@
-import { fetchAuthSession, getCurrentUser, signOut, updatePassword } from 'aws-amplify/auth';
+import {
+    fetchAuthSession,
+    fetchUserAttributes,
+    getCurrentUser,
+    signOut,
+    updatePassword,
+} from 'aws-amplify/auth';
 
 /**
  * Authenticated user information returned by the Auth helpers.
@@ -16,6 +22,10 @@ export interface AuthUser {
     jwtToken: string;
     /** Cognito user groups (e.g. ['admin', 'operator']) */
     groups: string[];
+    /** Display name: custom:racerName → preferred_username → username */
+    displayName: string;
+    /** All Cognito user attributes (standard + custom) */
+    attributes: Record<string, string>;
 }
 
 /**
@@ -31,12 +41,21 @@ export const getCurrentAuthUser = async (): Promise<AuthUser> => {
     const groups: string[] =
         (accessToken?.payload?.['cognito:groups'] as string[] | undefined) ?? [];
 
+    const rawAttributes = await fetchUserAttributes();
+    // fetchUserAttributes returns Record<string, string | undefined>; normalise to string
+    const attributes: Record<string, string> = Object.fromEntries(
+        Object.entries(rawAttributes).filter(([, v]) => v !== undefined)
+    ) as Record<string, string>;
+
     return {
         username: user.username,
         sub: user.userId, // v6: userId is the sub
         identityId: session.identityId ?? '',
         jwtToken: accessToken?.toString() ?? '',
         groups,
+        attributes,
+        displayName:
+            attributes['custom:racerName'] || attributes['preferred_username'] || user.username,
     };
 };
 

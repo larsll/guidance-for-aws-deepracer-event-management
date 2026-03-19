@@ -10,10 +10,10 @@ import awsconfig from '../../../config.json';
 
 /** Legacy config shape for accessing the upload bucket name */
 interface LegacyConfig {
-  Storage?: {
-    uploadBucket?: string;
-    region?: string;
-  };
+    Storage?: {
+        uploadBucket?: string;
+        region?: string;
+    };
 }
 
 /**
@@ -21,153 +21,163 @@ interface LegacyConfig {
  * Handles file selection, validation, and upload with progress tracking
  */
 export function ModelUpload(): JSX.Element {
-  const { t } = useTranslation();
-  const [sub, setSub] = useState<string>('');
-  const [username, setUsername] = useState<string>('');
-  const [uploadFiles, setUploadFiles] = useState<FileList | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [, dispatch] = useStore();
+    const { t } = useTranslation();
+    const [sub, setSub] = useState<string>('');
+    const [username, setUsername] = useState<string>('');
+    const [uploadFiles, setUploadFiles] = useState<FileList | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [, dispatch] = useStore();
 
-  useEffect(() => {
-    const getData = async () => {
-      getCurrentAuthUser().then((authUser) => {
-        setSub(authUser.sub);
-        setUsername(authUser.username);
-      });
+    useEffect(() => {
+        const getData = async () => {
+            getCurrentAuthUser().then((authUser) => {
+                setSub(authUser.sub);
+                setUsername(authUser.username);
+                // setUsername(user.attributes['custom:racerName'] || user.attributes.preferred_username || user.username);
+            });
+        };
+
+        getData();
+
+        return () => {
+            // Unmounting
+        };
+    }, []);
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setUploadFiles(e.target.files);
     };
 
-    getData();
+    useEffect(() => {
+        const saveModel = async (file: File) => {
+            const s3path = `${sub}/${username}/models/${file.name}`;
+            //const s3path = `${sub}/${file.name}`;
 
-    return () => {
-      // Unmounting
-    };
-  }, []);
+            if (file.name.match(/^[a-zA-Z0-9-_]+\.tar\.gz$/)) {
+                const legacyConfig = awsconfig as unknown as LegacyConfig;
+                const uploadBucket = legacyConfig.Storage?.uploadBucket;
+                const uploadRegion = legacyConfig.Storage?.region;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUploadFiles(e.target.files);
-  };
+                const uploadOp = uploadData({
+                    path: ({ identityId }) => `private/${identityId}/${s3path}`,
+                    data: file,
+                    options: {
+                        contentType: file.type,
+                        onProgress(progress: { transferredBytes: number; totalBytes?: number }) {
+                            const total = progress.totalBytes || 1;
+                            dispatch('ADD_NOTIFICATION', {
+                                type: 'info',
+                                content: (
+                                    <ProgressBar
+                                        description={
+                                            t('models.notifications.uploading-model') +
+                                            ' ' +
+                                            file.name +
+                                            '...'
+                                        }
+                                        value={Math.round(
+                                            (progress.transferredBytes / total) * 100
+                                        )}
+                                        variant="flash"
+                                    />
+                                ),
+                                id: file.name,
+                                dismissible: true,
+                                onDismiss: () => {
+                                    dispatch('DISMISS_NOTIFICATION', file.name);
+                                },
+                            });
+                        },
+                        ...(uploadBucket
+                            ? { bucket: { bucketName: uploadBucket, region: uploadRegion || '' } }
+                            : {}),
+                    },
+                });
 
-  useEffect(() => {
-    const saveModel = async (file: File) => {
-      const s3path = `${sub}/${username}/models/${file.name}`;
-      //const s3path = `${sub}/${file.name}`;
+                uploadOp.result
+                    .then((result: any) => {
+                        console.debug('MODEL UPLOAD RESULT', result);
+                        dispatch('ADD_NOTIFICATION', {
+                            type: 'success',
+                            content: (
+                                <ProgressBar
+                                    description={
+                                        t('models.notifications.upload-successful-1') +
+                                        ' ' +
+                                        file.name +
+                                        ' ' +
+                                        t('models.notifications.upload-successful-2')
+                                    }
+                                    value={100}
+                                    variant="flash"
+                                />
+                            ),
+                            id: file.name,
+                            dismissible: true,
+                            onDismiss: () => {
+                                dispatch('DISMISS_NOTIFICATION', file.name);
+                            },
+                        });
+                    })
+                    .catch((err: any) => {
+                        console.info(err);
+                        dispatch('ADD_NOTIFICATION', {
+                            header: t('models.notifications.could-not-upload') + ' ' + file.name,
+                            type: 'error',
+                            content: t('common.error'),
+                            dismissible: true,
+                            dismissLabel: t('models.notifications.dismiss-message'),
+                            id: file.name,
+                            onDismiss: () => {
+                                dispatch('DISMISS_NOTIFICATION', file.name);
+                            },
+                        });
+                    });
+            } else {
+                dispatch('ADD_NOTIFICATION', {
+                    header: t('models.notifications.could-not-upload') + ' ' + file.name,
+                    type: 'error',
+                    content: file.name + ' ' + t('carmodelupload.modal.file-regex'),
+                    dismissible: true,
+                    dismissLabel: t('models.notifications.dismiss-message'),
+                    id: file.name,
+                    onDismiss: () => {
+                        dispatch('DISMISS_NOTIFICATION', file.name);
+                    },
+                });
+            }
+        };
 
-      if (file.name.match(/^[a-zA-Z0-9-_]+\.tar\.gz$/)) {
-        const legacyConfig = awsconfig as unknown as LegacyConfig;
-        const uploadBucket = legacyConfig.Storage?.uploadBucket;
-        const uploadRegion = legacyConfig.Storage?.region;
+        for (let index = 0; index < (uploadFiles?.length || 0); index++) {
+            if (uploadFiles) {
+                saveModel(uploadFiles[index]);
+            }
+        }
 
-        const uploadOp = uploadData({
-          path: ({identityId}) => `private/${identityId}/${s3path}`,
-          data: file,
-          options: {
-            contentType: file.type,
-            onProgress(progress: { transferredBytes: number; totalBytes?: number }) {
-              const total = progress.totalBytes || 1;
-              dispatch('ADD_NOTIFICATION', {
-                type: 'info',
-                content: (
-                  <ProgressBar
-                    description={t('models.notifications.uploading-model') + ' ' + file.name + '...'}
-                    value={Math.round((progress.transferredBytes / total) * 100)}
-                    variant="flash"
-                  />
-                ),
-                id: file.name,
-                dismissible: true,
-                onDismiss: () => {
-                  dispatch('DISMISS_NOTIFICATION', file.name);
-                },
-              });
-            },
-            ...(uploadBucket ? { bucket: { bucketName: uploadBucket, region: uploadRegion || '' } } : {}),
-          },
-        });
+        return () => {
+            // Unmounting
+        };
+    }, [uploadFiles]);
 
-        uploadOp.result
-          .then((result: any) => {
-            console.debug('MODEL UPLOAD RESULT', result);
-            dispatch('ADD_NOTIFICATION', {
-              type: 'success',
-              content: (
-                <ProgressBar
-                  description={
-                    t('models.notifications.upload-successful-1') +
-                    ' ' +
-                    file.name +
-                    ' ' +
-                    t('models.notifications.upload-successful-2')
-                  }
-                  value={100}
-                  variant="flash"
+    return (
+        <>
+            <Button
+                iconName="upload"
+                onClick={() => {
+                    setUploadFiles(null);
+                    fileInputRef.current?.click();
+                }}
+            >
+                {t('upload.chose-file')}
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept="application/gzip,application/tar"
+                    multiple
+                    hidden
                 />
-              ),
-              id: file.name,
-              dismissible: true,
-              onDismiss: () => {
-                dispatch('DISMISS_NOTIFICATION', file.name);
-              },
-            });
-          })
-          .catch((err: any) => {
-            console.info(err);
-            dispatch('ADD_NOTIFICATION', {
-              header: t('models.notifications.could-not-upload') + ' ' + file.name,
-              type: 'error',
-              content: t('common.error'),
-              dismissible: true,
-              dismissLabel: t('models.notifications.dismiss-message'),
-              id: file.name,
-              onDismiss: () => {
-                dispatch('DISMISS_NOTIFICATION', file.name);
-              },
-            });
-          });
-      } else {
-        dispatch('ADD_NOTIFICATION', {
-          header: t('models.notifications.could-not-upload') + ' ' + file.name,
-          type: 'error',
-          content: file.name + ' ' + t('carmodelupload.modal.file-regex'),
-          dismissible: true,
-          dismissLabel: t('models.notifications.dismiss-message'),
-          id: file.name,
-          onDismiss: () => {
-            dispatch('DISMISS_NOTIFICATION', file.name);
-          },
-        });
-      }
-    };
-
-    for (let index = 0; index < (uploadFiles?.length || 0); index++) {
-      if (uploadFiles) {
-        saveModel(uploadFiles[index]);
-      }
-    }
-
-    return () => {
-      // Unmounting
-    };
-  }, [uploadFiles]);
-
-  return (
-    <>
-      <Button
-        iconName="upload"
-        onClick={() => {
-          setUploadFiles(null);
-          fileInputRef.current?.click();
-        }}
-      >
-        {t('upload.chose-file')}
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileUpload}
-          accept="application/gzip,application/tar"
-          multiple
-          hidden
-        />
-      </Button>
-    </>
-  );
+            </Button>
+        </>
+    );
 }

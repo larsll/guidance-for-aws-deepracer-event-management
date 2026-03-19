@@ -20,6 +20,7 @@ export interface InfrastructurePipelineStageProps extends cdk.StackProps {
   email: string;
   env: Environment;
   domainName?: string;
+  droaUserPoolId?: string;
 }
 
 class InfrastructurePipelineStage extends Stage {
@@ -39,6 +40,7 @@ class InfrastructurePipelineStage extends Stage {
       email: props.email,
       labelName: props.labelName,
       domainName: props.domainName,
+      droaUserPoolId: props.droaUserPoolId,
     });
     const stack = new DeepracerEventManagerStack(this, 'infrastructure', {
       baseStackName: baseStack.stackName,
@@ -57,6 +59,7 @@ class InfrastructurePipelineStage extends Stage {
       identiyPool: baseStack.idp.identityPool,
       userPoolClientWeb: baseStack.idp.userPoolClientWeb,
       dremWebsiteBucket: baseStack.dremWebsitebucket,
+      useExternalIdp: baseStack.idp.useExistingUserPool,
       eventbus: baseStack.eventbridge.eventbus,
     });
 
@@ -77,6 +80,7 @@ export interface CdkPipelineStackProps extends cdk.StackProps {
   email: string;
   env: Environment;
   domainName?: string;
+  droaUserPoolId?: string;
 }
 
 export class CdkPipelineStack extends cdk.Stack {
@@ -128,7 +132,8 @@ export class CdkPipelineStack extends cdk.Stack {
           `npx cdk@${CDK_VERSION} synth --all -c email=${props.email} -c label=${props.labelName}` +
             ` -c account=${props.env.account} -c region=${props.env.region}` +
             ` -c source_branch=${props.sourceBranchName} -c source_repo=${props.sourceRepo}` +
-            (props.domainName ? ` -c domain_name=${props.domainName}` : ''),
+            (props.domainName ? ` -c domain_name=${props.domainName}` : '') +
+            (props.droaUserPoolId ? ` -c DROA_USER_POOL_ID=${props.droaUserPoolId}` : ''),
         ],
         // partialBuildSpec: codebuild.BuildSpec.fromObject(
         //     {
@@ -158,7 +163,10 @@ export class CdkPipelineStack extends cdk.Stack {
     // Dev Stage
     const env = { account: stack.account, region: stack.region };
 
-    const infrastructure = new InfrastructurePipelineStage(this, `drem-backend-${props.labelName}`, { ...props });
+    const infrastructure = new InfrastructurePipelineStage(this, `drem-backend-${props.labelName}`, {
+      ...props,
+      droaUserPoolId: props.droaUserPoolId,
+    });
 
     const infrastructure_stage = pipeline.addStage(infrastructure, {
       pre: [new pipelines.ManualApprovalStep('DeployDREM')],
