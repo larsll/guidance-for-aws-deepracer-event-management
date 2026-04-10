@@ -57,12 +57,15 @@ def __get_username_by_user_id(userId):
     )
     logger.info(response)
     user = response["Users"][0]
+    # prefer custom:racerName, fall back to preferred_username, then Username
     username = user["Username"]
-    # pull "countryCode" out off attributes if it exists
     countryCode = ""
     for attributes in user["Attributes"]:
+        if attributes["Name"] == "custom:racerName":
+            username = attributes["Value"]
+        elif attributes["Name"] == "preferred_username" and username == user["Username"]:
+            username = attributes["Value"]
         if attributes["Name"] == "custom:countryCode":
-            # logger.info(attributes["Value"])
             countryCode = attributes["Value"]
 
     logger.info(username)

@@ -45,6 +45,10 @@ export const useUsersApi = (userHasAccess: boolean = false): void => {
         return countryCode.length > 0 ? countryCode[0].Value : '';
     }
 
+    function getUserRacerName(item: CognitoUser): string {
+        return item.racerName || item.Username;
+    }
+
     // Convert user roles to a comma delimited string
     function parseRoles(user: CognitoUser): string | null {
         if (!('Roles' in user) || user.Roles == null) return null;
@@ -65,6 +69,7 @@ export const useUsersApi = (userHasAccess: boolean = false): void => {
                         ...u,
                         Email: getUserEmail(u),
                         CountryCode: getUserCountryCode(u),
+                        RacerName: getUserRacerName(u),
                         Roles: parseRoles(u),
                     }));
                     dispatch('ADD_USERS', users);
@@ -94,6 +99,7 @@ export const useUsersApi = (userHasAccess: boolean = false): void => {
                             ...user,
                             Email: getUserEmail(user),
                             CountryCode: getUserCountryCode(user),
+                            RacerName: getUserRacerName(user),
                             Roles: parseRoles(user),
                         };
                         dispatch('UPDATE_USER', enrichedUser);
@@ -125,6 +131,7 @@ export const useUsersApi = (userHasAccess: boolean = false): void => {
                             ...user,
                             Email: getUserEmail(user),
                             CountryCode: getUserCountryCode(user),
+                            RacerName: getUserRacerName(user),
                             Roles: parseRoles(user),
                         };
                         dispatch('UPDATE_USER', enrichedUser);
@@ -136,7 +143,7 @@ export const useUsersApi = (userHasAccess: boolean = false): void => {
         }
         return () => {
             if (subscription) {
-                console.debug('deregister onUserCreated subscription');
+                console.debug('deregister onUserUpdated subscription');
                 subscription.unsubscribe();
             }
         };
@@ -157,6 +164,7 @@ export const useUsersApi = (userHasAccess: boolean = false): void => {
                             ...user,
                             Email: getUserEmail(user),
                             CountryCode: getUserCountryCode(user),
+                            RacerName: getUserRacerName(user),
                             Roles: parseRoles(user),
                         };
                         dispatch('UPDATE_USER', enrichedUser);

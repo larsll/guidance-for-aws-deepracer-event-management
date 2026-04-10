@@ -330,11 +330,14 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
     return items;
   };
 
-  const handleItemClick = useCallback(({ detail }: { detail: { id: string } }) => {
-    if (detail.id === 'signout' && signout) {
-      signout();
-    }
-  }, [signout]);
+  const handleItemClick = useCallback(
+    ({ detail }: { detail: { id: string } }) => {
+      if (detail.id === 'signout' && signout) {
+        signout();
+      }
+    },
+    [signout]
+  );
 
   const handleEventSelectClick = useCallback(() => {
     setEventSelectModalVisible(true);
@@ -378,7 +381,16 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
     }
 
     return items;
-  }, [user, t, signout, selectedEvent?.eventName, selectedTrack, permissions.topNavItems.eventSelection, handleItemClick, handleEventSelectClick]);
+  }, [
+    user,
+    t,
+    signout,
+    selectedEvent?.eventName,
+    selectedTrack,
+    permissions.topNavItems.eventSelection,
+    handleItemClick,
+    handleEventSelectClick,
+  ]);
 
   return (
     <div>
@@ -406,9 +418,9 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
       <AppLayout
         stickyNotifications
         notifications={
-          <Flashbar 
-            items={state.notifications?.notifications || []} 
-            stackItems={((state.notifications?.notifications?.length || 0) > 3)} 
+          <Flashbar
+            items={state.notifications?.notifications || []}
+            stackItems={(state.notifications?.notifications?.length || 0) > 3}
           />
         }
         tools={state.helpPanel?.content}

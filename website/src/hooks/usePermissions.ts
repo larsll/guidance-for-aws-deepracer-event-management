@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getCurrentAuthUser } from './useAuth';
 
+import awsconfig from '../config.json';
+
 interface ApiPermissions {
     fleets: boolean;
     events: boolean;
@@ -129,6 +131,15 @@ const getPermissions = (groups: string[]): Permissions => {
         permissions.api = {
             ...apiPermissions,
             events: true,
+        };
+    }
+
+    // When using an external IDP, hide admin and registration UI
+    if (awsconfig.Features?.useExternalIdp) {
+        permissions.sideNavItems = {
+            ...permissions.sideNavItems,
+            admin: false,
+            registration: false,
         };
     }
 

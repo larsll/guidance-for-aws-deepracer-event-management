@@ -57,6 +57,18 @@ def pre_token_generation_handler(event: dict, context: LambdaContext) -> str:
 @logger.inject_lambda_context
 def pre_sign_up_handler(event: dict, context: LambdaContext) -> str:
     try:
+        # Default preferred_username and custom:racerName to userName if not already set
+        user_attributes = event.get("request", {}).get("userAttributes", {})
+        user_name = event.get("userName", "")
+        if not user_attributes.get("preferred_username"):
+            event.setdefault("request", {}).setdefault("userAttributes", {})[
+                "preferred_username"
+            ] = user_name
+        if not user_attributes.get("custom:racerName"):
+            event.setdefault("request", {}).setdefault("userAttributes", {})[
+                "custom:racerName"
+            ] = user_name
+
         detail = {
             "metadata": {
                 "service": "cognito",

@@ -52,6 +52,7 @@ export interface DeepracerEventManagerStackProps extends cdk.StackProps {
     bundlingImage: DockerImage;
   };
   dremWebsiteBucket: IBucket;
+  useExternalIdp: boolean;
   eventbus: EventBus;
 }
 
@@ -309,6 +310,10 @@ export class DeepracerEventManagerStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'userPoolId', {
       value: props.userPool.userPoolId,
+    });
+
+    new cdk.CfnOutput(this, 'useExternalIdp', {
+      value: props.useExternalIdp ? 'true' : 'false',
     });
   }
 

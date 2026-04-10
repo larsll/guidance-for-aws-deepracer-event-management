@@ -72,6 +72,11 @@ if (domainName) {
   domainName = undefined;
 }
 
+const droaUserPoolId = (app.node.tryGetContext('DROA_USER_POOL_ID') as string | undefined) || undefined;
+if (droaUserPoolId) {
+  console.info('Using existing DRoA User Pool ID: ' + droaUserPoolId);
+}
+
 if (app.node.tryGetContext('manual_deploy') === 'True') {
   console.info('Manual Deploy started....');
 
@@ -79,6 +84,7 @@ if (app.node.tryGetContext('manual_deploy') === 'True') {
     email: mailAddress,
     labelName: labelName,
     domainName: domainName,
+    droaUserPoolId: droaUserPoolId,
     env: env,
   });
 
@@ -99,6 +105,7 @@ if (app.node.tryGetContext('manual_deploy') === 'True') {
     identiyPool: baseStack.idp.identityPool,
     userPoolClientWeb: baseStack.idp.userPoolClientWeb,
     dremWebsiteBucket: baseStack.dremWebsitebucket,
+    useExternalIdp: baseStack.idp.useExistingUserPool,
     eventbus: baseStack.eventbridge.eventbus,
     env: env,
   });
@@ -110,6 +117,7 @@ if (app.node.tryGetContext('manual_deploy') === 'True') {
     sourceBranchName: sourceBranchName,
     email: mailAddress,
     domainName: domainName,
+    droaUserPoolId: droaUserPoolId,
     env: env,
   });
 }

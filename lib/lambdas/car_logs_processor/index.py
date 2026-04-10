@@ -528,6 +528,7 @@ def query_users(username_prefix: str = None) -> list[dict]:
         listUsers(username_prefix: $username_prefix) {
             sub
             Username
+            racerName
         }    
     }
     """
@@ -544,7 +545,7 @@ def query_users(username_prefix: str = None) -> list[dict]:
 
         if response.get("data", {}).get("listUsers"):
             for user in response["data"]["listUsers"]:
-                users.append({"username": user["Username"], "sub": user["sub"]})
+                users.append({"username": user.get("racerName", user["Username"]), "sub": user["sub"]})
 
             log_message = f"Found {len(users)} users"
             if username_prefix:
