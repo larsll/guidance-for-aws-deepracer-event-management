@@ -242,6 +242,10 @@ export class BaseStack extends cdk.Stack {
       parameterName: `/${this.stackName}/authenticatedUserRoleArn`,
       stringValue: this.idp.authenticatedUserRole.roleArn,
     });
+    new ssm.StringParameter(this, 'ssmUseExternalIdp', {
+      parameterName: `/${this.stackName}/useExternalIdp`,
+      stringValue: this.idp.useExistingUserPool ? 'true' : 'false',
+    });
   }
 
   lambdaLayers = (

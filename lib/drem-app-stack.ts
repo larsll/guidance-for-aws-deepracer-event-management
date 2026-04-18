@@ -52,7 +52,6 @@ export interface DeepracerEventManagerStackProps extends cdk.StackProps {
     bundlingImage: DockerImage;
   };
   dremWebsiteBucket: IBucket;
-  useExternalIdp: boolean;
   eventbus: EventBus;
 }
 
@@ -83,6 +82,9 @@ export class DeepracerEventManagerStack extends cdk.Stack {
       this,
       `/${props.baseStackName}/regionalWafWebAclArn`
     );
+
+    // Get useExternalIdp from SSM, created in the base stack
+    const useExternalIdp = ssm.StringParameter.valueForStringParameter(this, `/${props.baseStackName}/useExternalIdp`);
 
     // Appsync API
     const appsyncResources = this.appsyncApi(this.stackName, props.userPool, wafWebAclRegionalArn);
@@ -313,7 +315,7 @@ export class DeepracerEventManagerStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'useExternalIdp', {
-      value: props.useExternalIdp ? 'true' : 'false',
+      value: useExternalIdp,
     });
   }
 
