@@ -1,12 +1,12 @@
 import * as cdk from 'aws-cdk-lib';
-import { Environment, Stage } from 'aws-cdk-lib';
+import { Aspects, Environment, Stage } from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as notifications from 'aws-cdk-lib/aws-codestarnotifications';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subs from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as pipelines from 'aws-cdk-lib/pipelines';
-import { NagSuppressions } from 'cdk-nag';
+import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { BaseStack } from './base-stack';
 import { DeepracerEventManagerStack } from './drem-app-stack';
@@ -37,6 +37,9 @@ class InfrastructurePipelineStage extends Stage {
   constructor(scope: Construct, id: string, props: InfrastructurePipelineStageProps) {
     super(scope, id, props);
 
+    // Ensure cdk-nag visits stacks inside this Stage during pipeline synth
+    Aspects.of(this).add(new AwsSolutionsChecks({ verbose: true }));
+
     const baseStack = new BaseStack(this, 'base', {
       email: props.email,
       labelName: props.labelName,
@@ -46,11 +49,9 @@ class InfrastructurePipelineStage extends Stage {
     const stack = new DeepracerEventManagerStack(this, 'infrastructure', {
       baseStackName: baseStack.stackName,
     });
-    // MIGRATION: infrastructure deploys before base so infra can drop
-    // Fn::ImportValue references while base still exports them. SSM parameters
-    // already exist from PR 1 so infra can resolve them at changeset time.
-    // Revert to stack.addDependency(baseStack) after this PR is deployed.
-    baseStack.addDependency(stack);
+    // Base deploys before infrastructure so SSM parameters exist when
+    // CloudFormation resolves them at changeset creation time.
+    stack.addDependency(baseStack);
 
     this.distributionId = stack.distributionId;
     this.sourceBucketName = stack.sourceBucketName;
