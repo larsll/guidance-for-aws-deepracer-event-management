@@ -28,6 +28,7 @@ import { ModelOptimizer } from './constructs/model-optimizer';
 import { ModelsManager } from './constructs/models-manager';
 import { ModelsManagerDefaultModelsDeployment } from './constructs/models-manager-default-models';
 import { RaceManager } from './constructs/race-manager';
+import { RacerProfile } from './constructs/racer-profile';
 import { SystemsManager } from './constructs/systems-manager';
 import { UserManager } from './constructs/user-manager';
 
@@ -172,10 +173,16 @@ export class DeepracerEventManagerStack extends cdk.Stack {
       eventbus: eventbus,
     });
 
+    const racerProfile = new RacerProfile(this, 'RacerProfile', {
+      appsyncApi: appsyncResources,
+    });
+
     new RaceManager(this, 'RaceManager', {
       appsyncApi: appsyncResources,
       lambdaConfig: lambdaConfig,
       eventbus: eventbus,
+      racerProfileObjectType: racerProfile.profileObjectType,
+      racerProfileTable: racerProfile.table,
     });
 
     const leaderboard = new Leaderboard(this, 'Leaderboard', {
@@ -185,8 +192,9 @@ export class DeepracerEventManagerStack extends cdk.Stack {
       userPoolId: userPool.userPoolId,
       userPoolArn: userPool.userPoolArn,
       eventbus: eventbus,
+      racerProfileObjectType: racerProfile.profileObjectType,
+      racerProfileTable: racerProfile.table,
     });
-
 
     const landingPage = new LandingPageManager(this, 'LandingPageManager', {
       adminGroupRole: adminGroupRole,

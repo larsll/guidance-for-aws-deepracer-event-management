@@ -30,6 +30,9 @@ import { ProfileHome } from '../admin/user-profile/profile';
 import { CreateUser } from '../admin/users/createUser';
 import { CommentatorStats } from '../commentator/commentator-stats';
 import { Home } from '../home';
+import { getCurrentAuthUser } from '../hooks/useAuth';
+import { graphqlQuery } from '../graphql/graphqlHelpers';
+import { getRacerProfile } from '../graphql/queries';
 import { useCarLogsApi } from '../hooks/useCarLogsApi';
 import { useCarsApi } from '../hooks/useCarsApi';
 import { useEventsApi } from '../hooks/useEventsApi';
@@ -51,6 +54,7 @@ import {
   useSelectedTrackContext,
 } from '../store/contexts/storeProvider';
 import { useStore } from '../store/store';
+import { AvatarDisplay } from './AvatarDisplay';
 import { EventSelectorModal } from './eventSelectorModal';
 
 // Type definitions
@@ -180,6 +184,25 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
   useModelsApi(permissions.api.allModels);
 
   const [eventSelectModalVisible, setEventSelectModalVisible] = useState<boolean>(false);
+  const [userAvatarConfig, setUserAvatarConfig] = useState<string | null>(null);
+
+  // Load user's avatar config for the top-nav mini avatar
+  useEffect(() => {
+    getCurrentAuthUser()
+      .then((authUser) =>
+        graphqlQuery<{ getRacerProfile: { avatarConfig?: string } | null }>(
+          getRacerProfile,
+          { username: authUser.username }
+        )
+      )
+      .then((data) => {
+        const raw = data?.getRacerProfile?.avatarConfig;
+        if (raw) setUserAvatarConfig(raw);
+      })
+      .catch(() => {
+        // silently ignore — will show default silhouette
+      });
+  }, []);
 
   useEffect(() => {
     if (windowSize.width && windowSize.width < 900) dispatch('SIDE_NAV_IS_OPEN', false);
@@ -345,7 +368,11 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
       {
         type: 'menu-dropdown',
         text: user,
-        iconName: 'user-profile',
+        iconSvg: (
+          <span style={{ display: 'inline-block', marginTop: '-4px' }}>
+            <AvatarDisplay avatarConfig={userAvatarConfig} size={24} />
+          </span>
+        ),
         items: [
           {
             id: 'user-profile',
@@ -378,7 +405,7 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
     }
 
     return items;
-  }, [user, t, signout, selectedEvent?.eventName, selectedTrack, permissions.topNavItems.eventSelection, handleItemClick, handleEventSelectClick]);
+  }, [user, userAvatarConfig, t, signout, selectedEvent?.eventName, selectedTrack, permissions.topNavItems.eventSelection, handleItemClick, handleEventSelectClick]);
 
   return (
     <div>
