@@ -28,6 +28,8 @@ ifdef droa_user_pool_id
 droa_args = -c DROA_USER_POOL_ID=$(droa_user_pool_id)
 else
 droa_args =
+endif
+
 ifdef require_approval
 require_approval_arg = -c require_approval=$(require_approval)
 else
