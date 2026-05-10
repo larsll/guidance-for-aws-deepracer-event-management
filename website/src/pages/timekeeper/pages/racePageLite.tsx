@@ -173,6 +173,7 @@ export const RacePage = ({
             trackId: raceInfo.trackId,
             username: raceInfo.username,
             userId: raceInfo.userId,
+            countryCode: raceInfo.countryCode,
             laps: lapsForOverlay.current,
             averageLaps: averageLapTimeInformationForOverlay.current,
             timeLeftInMs: raceConfig.raceTimeInMin * 60 * 1000, // racetime in MS
@@ -189,6 +190,7 @@ export const RacePage = ({
             trackId: raceInfo.trackId,
             username: raceInfo.username,
             userId: raceInfo.userId,
+            countryCode: raceInfo.countryCode,
             laps: lapsForOverlay.current,
             averageLaps: averageLapTimeInformationForOverlay.current,
             timeLeftInMs: raceTimerRef.current.getCurrentTimeInMs(),
@@ -205,6 +207,7 @@ export const RacePage = ({
             trackId: raceInfo.trackId,
             username: raceInfo.username,
             userId: raceInfo.userId,
+            countryCode: raceInfo.countryCode,
             laps: lapsForOverlay.current,
             averageLaps: averageLapTimeInformationForOverlay.current,
             timeLeftInMs: raceTimerRef.current.getCurrentTimeInMs(),

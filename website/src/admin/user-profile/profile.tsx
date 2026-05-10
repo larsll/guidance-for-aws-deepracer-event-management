@@ -9,6 +9,8 @@ import Header from '@cloudscape-design/components/header';
 import KeyValuePairs from '@cloudscape-design/components/key-value-pairs';
 
 import awsconfig from '../../config.json';
+import { AvatarBuilder } from './AvatarBuilder';
+
 import { graphqlMutate } from '../../graphql/graphqlHelpers';
 import * as mutations from '../../graphql/mutations';
 import { authChangePassword, authSignOut, getCurrentAuthUser } from '../../hooks/useAuth';
@@ -122,13 +124,6 @@ const ProfileHome: React.FC<ProfileHomeProps> = (props) => {
         };
     }, [current_password, new_password, new_password_confirm]);
 
-    const ValueWithLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
-        <div>
-            <Box variant="awsui-key-label">{label}</Box>
-            <div>{children}</div>
-        </div>
-    );
-
     const isExternalIdp = awsconfig.Features?.useExternalIdp;
 
     return (
@@ -155,6 +150,8 @@ const ProfileHome: React.FC<ProfileHomeProps> = (props) => {
                             ]}
                         />
                     </Container>
+
+                    <AvatarBuilder />
 
                     {!isExternalIdp && (
                         <Container

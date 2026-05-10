@@ -63,6 +63,7 @@ export interface CdkPipelineStackProps extends cdk.StackProps {
   env: Environment;
   domainName?: string;
   droaUserPoolId?: string;
+  requireApproval?: boolean;
 }
 
 export class CdkPipelineStack extends cdk.Stack {
@@ -121,7 +122,8 @@ export class CdkPipelineStack extends cdk.Stack {
             ` -c account=${props.env.account} -c region=${props.env.region}` +
             ` -c source_branch=${props.sourceBranchName} -c source_repo=${props.sourceRepo}` +
             (props.domainName ? ` -c domain_name=${props.domainName}` : '') +
-            (props.droaUserPoolId ? ` -c DROA_USER_POOL_ID=${props.droaUserPoolId}` : ''),
+            (props.droaUserPoolId ? ` -c DROA_USER_POOL_ID=${props.droaUserPoolId}` : '') +
+            (props.requireApproval === false ? ` -c require_approval=false` : ''),
         ],
         partialBuildSpec: codebuild.BuildSpec.fromObject({
           reports: {
@@ -154,13 +156,11 @@ export class CdkPipelineStack extends cdk.Stack {
       droaUserPoolId: props.droaUserPoolId,
     });
 
-    const infrastructure_stage = pipeline.addStage(infrastructure, {
-      pre: [new pipelines.ManualApprovalStep('DeployDREM')],
-    });
-
     // Website unit tests — run as a pre-deploy gate on the infrastructure stage.
     // Kept separate from synth so directory restructures (e.g. website
     // consolidation) can't block cdk.out generation and pipeline self-mutation.
+    // `--legacy-peer-deps` is required because avataaars@2 declares a React 17
+    // peer while DREM uses React 18.
     const websiteTestStep = new pipelines.CodeBuildStep('WebsiteTests', {
       buildEnvironment: {
         buildImage: codebuild.LinuxArmBuildImage.AMAZON_LINUX_2023_STANDARD_3_0,
@@ -169,8 +169,8 @@ export class CdkPipelineStack extends cdk.Stack {
       installCommands: [`n ${NODE_VERSION}`, 'node --version'],
       commands: [
         'npm install',
-        'cd website && npm install && npm test && cd ..',
-        'cd website/leaderboard && npm install && npm test && cd ../..',
+        'cd website && npm install --legacy-peer-deps && npm test && cd ..',
+        'cd website/leaderboard && npm install --legacy-peer-deps && npm test && cd ../..',
       ],
       partialBuildSpec: codebuild.BuildSpec.fromObject({
         reports: {
@@ -182,7 +182,21 @@ export class CdkPipelineStack extends cdk.Stack {
         },
       }),
     });
-    infrastructure_stage.addPre(websiteTestStep);
+
+    // Manual approval depends on WebsiteTests so the approval notification
+    // doesn't appear until tests pass — otherwise the two ran in parallel and
+    // a deploy could be approved before tests had even started.
+    // requireApproval defaults to true. Set requireApproval=false in build.config
+    // to skip the manual approval gate (handy for fork dev environments).
+    const requireApproval = props.requireApproval !== false;
+    const approvalStep = new pipelines.ManualApprovalStep('DeployDREM');
+    if (requireApproval) {
+      approvalStep.addStepDependency(websiteTestStep);
+    }
+
+    const infrastructure_stage = pipeline.addStage(infrastructure, {
+      pre: requireApproval ? [websiteTestStep, approvalStep] : [websiteTestStep],
+    });
 
     const rolePolicyStatementsForWebsiteDeployStages = [
       new iam.PolicyStatement({
@@ -235,7 +249,7 @@ export class CdkPipelineStack extends cdk.Stack {
 
         // Build leaderboard and overlays, copy into website/public/
         'docker run --rm -v $(pwd):/foo -w /foo/website/leaderboard' +
-          " public.ecr.aws/sam/build-nodejs22.x:latest bash -c 'npm install --cache /tmp/empty-cache && npm run build'",
+          " public.ecr.aws/sam/build-nodejs22.x:latest bash -c 'npm install --cache /tmp/empty-cache --legacy-peer-deps && npm run build'",
         'mkdir -p ./website/public/leaderboard && cp -r ./website/leaderboard/build/. ./website/public/leaderboard/',
         'docker run --rm -v $(pwd):/foo -w /foo/website/overlays' +
           " public.ecr.aws/sam/build-nodejs22.x:latest bash -c 'npm install --cache /tmp/empty-cache && npm run build'",
@@ -243,7 +257,7 @@ export class CdkPipelineStack extends cdk.Stack {
 
         // Build main site (sub-apps already in public/)
         'docker run --rm -v $(pwd):/foo -w /foo/website' +
-          " public.ecr.aws/sam/build-nodejs22.x:latest bash -c 'npm install --cache /tmp/empty-cache && npm run build'",
+          " public.ecr.aws/sam/build-nodejs22.x:latest bash -c 'npm install --cache /tmp/empty-cache --legacy-peer-deps && npm run build'",
 
         // Sync everything and invalidate
         'aws s3 sync ./website/build/ s3://$sourceBucketName/ --delete',
@@ -268,7 +282,8 @@ export class CdkPipelineStack extends cdk.Stack {
         'aws appsync get-introspection-schema --api-id $appsyncId --format SDL website/src/graphql/schema.graphql',
         // Root postinstall is gated to skip on CodeBuild ($CODEBUILD_BUILD_ID is set),
         // so install website/ deps explicitly before running its npm scripts.
-        'cd website && npm install && npm run test:post-deploy && cd ..',
+        // `--legacy-peer-deps` for the avataaars@2 React 17 peer.
+        'cd website && npm install --legacy-peer-deps && npm run test:post-deploy && cd ..',
       ],
       envFromCfnOutputs: {
         appsyncId: infrastructure.appsyncId,

@@ -161,6 +161,11 @@ export const onDeleteLeaderboardEntry = /* GraphQL */ `
       racedByProxy
       trackId
       username
+      profile {
+        username
+        avatarConfig
+        highlightColour
+      }
       __typename
     }
   }
@@ -317,6 +322,11 @@ export const onNewLeaderboardEntry = /* GraphQL */ `
       racedByProxy
       trackId
       username
+      profile {
+        username
+        avatarConfig
+        highlightColour
+      }
       __typename
     }
   }
@@ -348,6 +358,11 @@ export const onNewOverlayInfo = /* GraphQL */ `
       trackId
       userId
       username
+      profile {
+        username
+        avatarConfig
+        highlightColour
+      }
       __typename
     }
   }
@@ -373,6 +388,11 @@ export const onUpdateLeaderboardEntry = /* GraphQL */ `
       racedByProxy
       trackId
       username
+      profile {
+        username
+        avatarConfig
+        highlightColour
+      }
       __typename
     }
   }

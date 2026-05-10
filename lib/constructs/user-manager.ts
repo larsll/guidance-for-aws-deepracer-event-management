@@ -113,6 +113,7 @@ export class UserManager extends Construct {
           'cognito-idp:ListUsersInGroup',
           'cognito-idp:AdminAddUserToGroup',
           'cognito-idp:AdminRemoveUserFromGroup',
+          'cognito-idp:AdminGetUser',
         ],
         resources: [props.userPoolArn],
       })
@@ -380,7 +381,9 @@ export class UserManager extends Construct {
         new iam.PolicyStatement({
           effect: iam.Effect.ALLOW,
           actions: ['appsync:GraphQL'],
-          resources: [`${props.appsyncApi.api.arn}/types/Mutation/fields/deleteUser`],
+          resources: [
+            `${props.appsyncApi.api.arn}/types/Mutation/fields/deleteUser`,
+          ],
         }),
       ],
     });

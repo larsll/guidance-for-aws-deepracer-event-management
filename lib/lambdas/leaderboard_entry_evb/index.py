@@ -48,22 +48,24 @@ def lambda_handler(evbEvent, context):
     return
 
 
-def __get_username_by_user_id(userId):
+def __get_username_by_user_id(userId: str) -> tuple:
+    """Read Cognito username and countryCode for the given userId."""
     logger.info(f"userId = {userId}")
     response = cognito_client.list_users(
         UserPoolId=USER_POOL_ID,
-        # AttributesToGet=["custom:countryCode"],
         Filter=f'sub = "{userId}"',
     )
     logger.info(response)
     user = response["Users"][0]
     # prefer custom:racerName, fall back to preferred_username, then Username
     username = user["Username"]
-    countryCode = ""
+    countryCode = None
     for attributes in user["Attributes"]:
         if attributes["Name"] == "custom:racerName":
             username = attributes["Value"]
-        elif attributes["Name"] == "preferred_username" and username == user["Username"]:
+        elif (
+            attributes["Name"] == "preferred_username" and username == user["Username"]
+        ):
             username = attributes["Value"]
         if attributes["Name"] == "custom:countryCode":
             countryCode = attributes["Value"]
@@ -152,6 +154,11 @@ def __add_to_leaderboard(variables):
             racedByProxy
             countryCode
             mostConcecutiveLaps
+            profile {
+                username
+                avatarConfig
+                highlightColour
+            }
             }
         }
         """
@@ -206,6 +213,11 @@ def __update_entry_on_leaderboard(variables):
             username
             racedByProxy
             countryCode
+            profile {
+                username
+                avatarConfig
+                highlightColour
+            }
             }
         }
         """
