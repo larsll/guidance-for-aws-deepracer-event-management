@@ -46,7 +46,25 @@
   overflow: scroll;
   height: calc(100vh - 32vmin);
   position: relative;
-  margin-top: 0;
+  /* Negative horizontal margin + matching padding extends the scroll box
+     past .leaderboardRoot's 90% width so the highlighted entry's
+     transform: scale(1.1) and cyan glow can render past the leaderboard's
+     visible "borders" without being clipped. The inner .entry width is
+     unchanged. .pageRoot has overflow-x: hidden to absorb any sliver
+     poking past the viewport. */
+  margin: 0 -10vmin;
+  padding: 0 10vmin;
+}
+
+/* When the new-finisher summary overlay is shown it sits fixed at the bottom
+   and obscures the bottom of the leaderboard. Shrink the scroll area so the
+   last visible entry (and any entry we scroll into view) clears the overlay.
+   No transition: scrollIntoView in LeaderboardTable runs in the same effect
+   tick as this class is applied, and a transition would leave it calculating
+   against the old (taller) height — landing the highlighted entry below the
+   new visible area. Snap the height so the geometry is correct immediately. */
+.entriesWithFooter {
+  height: calc(100vh - 52vmin);
 }
 
 .entries::-webkit-scrollbar{
@@ -224,5 +242,21 @@
 @keyframes textclip {
   to {
     background-position: 200% center;
+  }
+}
+
+.highlighted {
+  box-shadow: 0 0 1.5rem rgba(0, 255, 235, 0.6), inset 0 0 0 2px rgba(0, 255, 235, 0.8);
+  animation: highlightPulse 2s ease-in-out infinite;
+  transform: scale(1.1);
+  z-index: 200;
+}
+
+@keyframes highlightPulse {
+  0%, 100% {
+    box-shadow: 0 0 1.5rem rgba(0, 255, 235, 0.6), inset 0 0 0 2px rgba(0, 255, 235, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 2.5rem rgba(0, 255, 235, 0.9), inset 0 0 0 2px rgba(0, 255, 235, 1);
   }
 }
