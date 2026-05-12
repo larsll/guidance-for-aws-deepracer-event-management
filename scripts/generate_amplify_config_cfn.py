@@ -3,6 +3,7 @@ import json
 with open("cfn.outputs") as json_file:
     data = json.load(json_file)
 
+    useExternalIdp = "false"
     for key in data:
         if key["OutputKey"].startswith("appsyncEndpoint"):
             appsyncEndpoint = key["OutputValue"]
@@ -26,6 +27,8 @@ with open("cfn.outputs") as json_file:
             cwRumAppMonitorRegion = key["OutputValue"]
         if key["OutputKey"] == "cwRumAppMonitorConfig":
             cwRumAppMonitorConfig = key["OutputValue"]
+        if key["OutputKey"] == "useExternalIdp":
+            useExternalIdp = key["OutputValue"]
 
     output_data = {
         "Auth": {
@@ -51,6 +54,9 @@ with open("cfn.outputs") as json_file:
                 "region": cwRumAppMonitorRegion,
                 "config": cwRumAppMonitorConfig,
             },
+        },
+        "Features": {
+            "useExternalIdp": useExternalIdp == "true",
         },
     }
 

@@ -30,10 +30,10 @@ import { UploadToCarStatus } from '../admin/uploadToCarStatus';
 import { ProfileHome } from '../admin/user-profile/profile';
 import { CreateUser } from '../admin/users/createUser';
 import { CommentatorStats } from '../commentator/commentator-stats';
-import { Home } from '../home';
-import { getCurrentAuthUser } from '../hooks/useAuth';
 import { graphqlQuery } from '../graphql/graphqlHelpers';
 import { getRacerProfile } from '../graphql/queries';
+import { Home } from '../home';
+import { getCurrentAuthUser } from '../hooks/useAuth';
 import { useCarLogsApi } from '../hooks/useCarLogsApi';
 import { useCarsApi } from '../hooks/useCarsApi';
 import { useEventsApi } from '../hooks/useEventsApi';
@@ -191,10 +191,9 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
   useEffect(() => {
     getCurrentAuthUser()
       .then((authUser) =>
-        graphqlQuery<{ getRacerProfile: { avatarConfig?: string } | null }>(
-          getRacerProfile,
-          { username: authUser.username }
-        )
+        graphqlQuery<{ getRacerProfile: { avatarConfig?: string } | null }>(getRacerProfile, {
+          username: authUser.username,
+        })
       )
       .then((data) => {
         const raw = data?.getRacerProfile?.avatarConfig;
@@ -206,8 +205,12 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
   }, []);
 
   // Visual mode and density preferences — persisted in localStorage
-  const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('DREM-dark-mode') === 'true');
-  const [compactDensity, setCompactDensity] = useState<boolean>(() => localStorage.getItem('DREM-compact-density') === 'true');
+  const [darkMode, setDarkMode] = useState<boolean>(
+    () => localStorage.getItem('DREM-dark-mode') === 'true'
+  );
+  const [compactDensity, setCompactDensity] = useState<boolean>(
+    () => localStorage.getItem('DREM-compact-density') === 'true'
+  );
 
   useEffect(() => {
     applyMode(darkMode ? Mode.Dark : Mode.Light);
@@ -368,15 +371,18 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
     return items;
   };
 
-  const handleItemClick = useCallback(({ detail }: { detail: { id: string } }) => {
-    if (detail.id === 'signout' && signout) {
-      signout();
-    } else if (detail.id === 'dark-mode') {
-      setDarkMode((prev) => !prev);
-    } else if (detail.id === 'compact-density') {
-      setCompactDensity((prev) => !prev);
-    }
-  }, [signout]);
+  const handleItemClick = useCallback(
+    ({ detail }: { detail: { id: string } }) => {
+      if (detail.id === 'signout' && signout) {
+        signout();
+      } else if (detail.id === 'dark-mode') {
+        setDarkMode((prev) => !prev);
+      } else if (detail.id === 'compact-density') {
+        setCompactDensity((prev) => !prev);
+      }
+    },
+    [signout]
+  );
 
   const handleEventSelectClick = useCallback(() => {
     setEventSelectModalVisible(true);
@@ -434,7 +440,19 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
     }
 
     return items;
-  }, [user, userAvatarConfig, t, signout, selectedEvent?.eventName, selectedTrack, permissions.topNavItems.eventSelection, handleItemClick, handleEventSelectClick, darkMode, compactDensity]);
+  }, [
+    user,
+    userAvatarConfig,
+    t,
+    signout,
+    selectedEvent?.eventName,
+    selectedTrack,
+    permissions.topNavItems.eventSelection,
+    handleItemClick,
+    handleEventSelectClick,
+    darkMode,
+    compactDensity,
+  ]);
 
   return (
     <div>
@@ -462,9 +480,9 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
       <AppLayout
         stickyNotifications
         notifications={
-          <Flashbar 
-            items={state.notifications?.notifications || []} 
-            stackItems={((state.notifications?.notifications?.length || 0) > 3)} 
+          <Flashbar
+            items={state.notifications?.notifications || []}
+            stackItems={(state.notifications?.notifications?.length || 0) > 3}
           />
         }
         tools={state.helpPanel?.content}

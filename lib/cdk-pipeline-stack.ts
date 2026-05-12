@@ -21,6 +21,7 @@ export interface InfrastructurePipelineStageProps extends cdk.StackProps {
   email: string;
   env: Environment;
   domainName?: string;
+  droaUserPoolId?: string;
 }
 
 class InfrastructurePipelineStage extends Stage {
@@ -39,6 +40,7 @@ class InfrastructurePipelineStage extends Stage {
       email: props.email,
       labelName: props.labelName,
       domainName: props.domainName,
+      droaUserPoolId: props.droaUserPoolId,
     });
     const stack = new DeepracerEventManagerStack(this, 'infrastructure', {
       baseStackName: baseStack.stackName,
@@ -60,6 +62,7 @@ export interface CdkPipelineStackProps extends cdk.StackProps {
   email: string;
   env: Environment;
   domainName?: string;
+  droaUserPoolId?: string;
   requireApproval?: boolean;
 }
 
@@ -119,6 +122,7 @@ export class CdkPipelineStack extends cdk.Stack {
             ` -c account=${props.env.account} -c region=${props.env.region}` +
             ` -c source_branch=${props.sourceBranchName} -c source_repo=${props.sourceRepo}` +
             (props.domainName ? ` -c domain_name=${props.domainName}` : '') +
+            (props.droaUserPoolId ? ` -c DROA_USER_POOL_ID=${props.droaUserPoolId}` : '') +
             (props.requireApproval === false ? ` -c require_approval=false` : ''),
         ],
         partialBuildSpec: codebuild.BuildSpec.fromObject({
@@ -147,7 +151,10 @@ export class CdkPipelineStack extends cdk.Stack {
     // Dev Stage
     const env = { account: stack.account, region: stack.region };
 
-    const infrastructure = new InfrastructurePipelineStage(this, `drem-backend-${props.labelName}`, { ...props });
+    const infrastructure = new InfrastructurePipelineStage(this, `drem-backend-${props.labelName}`, {
+      ...props,
+      droaUserPoolId: props.droaUserPoolId,
+    });
 
     // Website unit tests — run as a pre-deploy gate on the infrastructure stage.
     // Kept separate from synth so directory restructures (e.g. website

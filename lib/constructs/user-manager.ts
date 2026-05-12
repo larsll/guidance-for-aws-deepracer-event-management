@@ -107,6 +107,7 @@ export class UserManager extends Construct {
         effect: iam.Effect.ALLOW,
         actions: [
           'cognito-idp:AdminCreateUser',
+          'cognito-idp:AdminUpdateUserAttributes',
           'cognito-idp:ListUsers',
           'cognito-idp:ListGroups',
           'cognito-idp:ListUsersInGroup',
@@ -215,6 +216,7 @@ export class UserManager extends Construct {
         UserStatus: GraphqlType.string(),
         MFAOptions: user_object_mfa_options.attribute({ isList: true, isRequired: false }),
         sub: GraphqlType.id({ isRequired: false }),
+        racerName: GraphqlType.string({ isRequired: false }),
       },
       directives: [Directive.cognito('admin', 'registration', 'operator'), Directive.iam()],
     });
@@ -297,6 +299,20 @@ export class UserManager extends Construct {
       })
     );
 
+    props.appsyncApi.schema.addMutation(
+      'updateUserAttributes',
+      new ResolvableField({
+        args: {
+          username: GraphqlType.string({ isRequired: true }),
+          preferredUsername: GraphqlType.string({ isRequired: true }),
+          countryCode: GraphqlType.string({ isRequired: false }),
+        },
+        returnType: user_object.attribute(),
+        dataSource: users_data_source,
+        directives: [Directive.cognito('admin', 'operator')],
+      })
+    );
+
     props.appsyncApi.schema.addSubscription(
       'onUserUpdated',
       new ResolvableField({
@@ -328,6 +344,7 @@ export class UserManager extends Construct {
             isRequired: false,
           }),
           sub: GraphqlType.id({ isRequired: false }),
+          racerName: GraphqlType.string({ isRequired: false }),
         },
         returnType: user_object.attribute(),
         dataSource: props.appsyncApi.noneDataSource,

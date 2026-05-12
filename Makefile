@@ -24,6 +24,12 @@ else
 domain_name_arg =
 endif
 
+ifdef droa_user_pool_id
+droa_args = -c DROA_USER_POOL_ID=$(droa_user_pool_id)
+else
+droa_args =
+endif
+
 ifdef require_approval
 require_approval_arg = -c require_approval=$(require_approval)
 else
@@ -41,7 +47,8 @@ VENV_PYTHON := .venv/bin/python3
 # isn't set in build.config — passing an empty string is a no-op for cdk.
 CDK_CONTEXT := -c email=$(email) -c label=$(label) -c account=$(account_id) \
                -c region=$(region) -c source_branch=$(source_branch) \
-               -c source_repo=$(source_repo) $(domain_name_arg)
+               -c source_repo=$(source_repo) $(domain_name_arg) \
+			   $(droa_args)
 
 ## ----------------------------------------------------------------------------
 .PHONY: help
