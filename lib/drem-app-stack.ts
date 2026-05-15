@@ -32,6 +32,7 @@ import { RacerProfile } from './constructs/racer-profile';
 import { Statistics } from './constructs/statistics';
 import { SystemsManager } from './constructs/systems-manager';
 import { UserManager } from './constructs/user-manager';
+import { RaceResultsPdf } from './constructs/race-results-pdf';
 
 export interface DeepracerEventManagerStackProps extends cdk.StackProps {
   baseStackName: string;
@@ -245,6 +246,21 @@ export class DeepracerEventManagerStack extends cdk.Stack {
       logsbucket: logsBucket,
       appsyncApi: appsyncResources,
       carStatusDataHandlerLambda: carManager.carStatusDataHandlerLambda,
+    });
+
+    new RaceResultsPdf(this, 'RaceResultsPdf', {
+      appsyncApi: appsyncResources,
+      // x86_64 rather than ARM64 because this Lambda ships as a container
+      // image, and CodeBuild's x86_64 runners can't build ARM64 images
+      // without QEMU emulation set up. The cost / perf delta on a single
+      // on-demand PDF Lambda is negligible.
+      lambdaConfig: { architecture: lambda.Architecture.X86_64 },
+      userPoolId: userPool.userPoolId,
+      userPoolArn: userPool.userPoolArn,
+      raceTable: raceManager.raceTable,
+      eventsTable: eventsManager.eventsTable,
+      racerProfileTable: racerProfile.table,
+      logsBucket: logsBucket,
     });
 
     const cwRumAppMonitor = new CwRumAppMonitor(this, 'CwRumAppMonitor', {
