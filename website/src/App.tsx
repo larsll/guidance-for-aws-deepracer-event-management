@@ -56,6 +56,7 @@ interface LegacyConfig {
     aws_appsync_graphqlEndpoint: string;
     aws_appsync_region: string;
     aws_appsync_authenticationType: string;
+    aws_appsync_apiKey?: string;
   };
   Urls?: {
     leaderboardWebsite?: string;
@@ -87,6 +88,7 @@ function buildAmplifyConfig(legacy: LegacyConfig): ResourcesConfig {
         endpoint: legacy.API.aws_appsync_graphqlEndpoint,
         region: legacy.API.aws_appsync_region,
         defaultAuthMode: 'userPool',
+        ...(legacy.API.aws_appsync_apiKey ? { apiKey: legacy.API.aws_appsync_apiKey } : {}),
       },
     },
     Storage: {

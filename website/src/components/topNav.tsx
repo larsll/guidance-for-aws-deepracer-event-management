@@ -46,6 +46,7 @@ import { useUsersApi } from '../hooks/useUsersApi';
 import { useWindowSize } from '../hooks/useWindowsSize';
 import { CarLogsManagement } from '../pages/car-logs-management/carLogsManagement';
 import { ModelManagement } from '../pages/model-management/modelManagement';
+import { GlobalDashboard } from '../pages/stats/globalDashboard';
 import { Timekeeper } from '../pages/timekeeper/timeKeeper';
 import { TimekeeperWizard } from '../pages/timekeeper/timeKeeperWizard';
 import { UserManagement } from '../pages/user-manager/userManagement';
@@ -83,6 +84,7 @@ function usePageViews(): void {
 }
 const defaultRoutes: ReactElement[] = [
   <Route key="home" path="/" element={<Home />} />,
+  <Route key="stats" path="/stats" element={<GlobalDashboard />} />,
   <Route key="home-wildcard" path="*" element={<Home />} />,
   <Route key="user-profile" path="/user/profile" element={<ProfileHome />} />,
   <Route key="models-view" path="/models/view" element={<ModelManagement />} />,
@@ -228,6 +230,7 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
   }, [windowSize.width, dispatch]);
 
   const defaultSideNavItems = [
+    { type: 'link', text: t('navigation.stats'), href: '/stats' },
     {
       type: 'section',
       text: t('topnav.models-own'),
@@ -354,7 +357,7 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
     },
   ];
 
-  const SideNavItems = (): SideNavigationProps.Item[] => {
+  const sideNavItems = useMemo((): SideNavigationProps.Item[] => {
     let items: SideNavigationProps.Item[] = defaultSideNavItems as SideNavigationProps.Item[];
     if (permissions.sideNavItems.registration) {
       items = items.concat(registrationSideNavItems as SideNavigationProps.Item[]);
@@ -369,7 +372,7 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
       items = items.concat(adminSideNavItems as SideNavigationProps.Item[]);
     }
     return items;
-  };
+  }, [permissions, t]);
 
   const handleItemClick = useCallback(
     ({ detail }: { detail: { id: string } }) => {
@@ -496,7 +499,7 @@ export function TopNav({ user, signout }: TopNavProps): JSX.Element {
           <SideNavigation
             activeHref={window.location.pathname}
             onFollow={handleFollow}
-            items={SideNavItems()}
+            items={sideNavItems}
           />
         }
         contentType="table"
