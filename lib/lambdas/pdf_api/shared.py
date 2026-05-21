@@ -86,7 +86,7 @@ def get_races(event_id: str, track_id: str | None) -> list[dict]:
 
 
 def lookup_user(user_id: str) -> dict:
-    """Resolve a Cognito sub to {username, countryCode, avatarConfig, highlightColour}.
+    """Resolve a Cognito sub to racer identity + profile metadata.
 
     avatarConfig and highlightColour come from the RacerProfile DynamoDB table
     keyed by username (added in the post-#171 RacerProfile rework). They are
@@ -98,14 +98,20 @@ def lookup_user(user_id: str) -> dict:
             return {"username": user_id[:8], "countryCode": "", "avatarConfig": None, "highlightColour": None}
         u = resp["Users"][0]
         attrs = {a["Name"]: a["Value"] for a in u["Attributes"]}
-        username = u["Username"]
+        cognito_username = u["Username"]
+        display_name = (
+            attrs.get("custom:racerName")
+            or attrs.get("preferred_username")
+            or cognito_username
+        )
     except Exception as e:
         logger.warning(f"Cognito lookup failed for {user_id}: {e}")
         return {"username": user_id[:8], "countryCode": "", "avatarConfig": None, "highlightColour": None}
 
-    profile = _lookup_racer_profile(username)
+    profile = _lookup_racer_profile(cognito_username)
     return {
-        "username": username,
+        "username": display_name,
+        "cognitoUsername": cognito_username,
         "countryCode": attrs.get("custom:countryCode", ""),
         "avatarConfig": profile.get("avatarConfig"),
         "highlightColour": profile.get("highlightColour"),
@@ -145,6 +151,7 @@ def build_summaries(races: list[dict], user_map: dict[str, dict]) -> list[dict]:
         s = calculate_racer_summary(uid, user_races)
         u = user_map.get(uid, {})
         s["username"] = u.get("username", uid[:8])
+        s["cognitoUsername"] = u.get("cognitoUsername", s["username"])
         s["countryCode"] = u.get("countryCode", "")
         s["highlightColour"] = u.get("highlightColour") or None
         s["avatarUrl"] = render_avatar_data_uri(u.get("avatarConfig"))
