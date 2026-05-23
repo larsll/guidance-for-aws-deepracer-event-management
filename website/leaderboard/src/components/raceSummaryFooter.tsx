@@ -1,4 +1,4 @@
-import Avatar from 'avataaars';
+import Avatar from '@vierweb/avataaars';
 import { useTranslation } from 'react-i18next';
 import { useWindowSize } from '../hooks/useWindowSize';
 import { convertMsToString } from '../support-functions/time';
@@ -36,25 +36,33 @@ const RaceSummaryFooter = (params: any) => {
   const displayInformation = {
     itemOne: (
       <div>
-        <div className={styles.footerSmallHeader}>{t('leaderboard.summary-footer.fastest-time')}</div>
+        <div className={styles.footerSmallHeader}>
+          {t('leaderboard.summary-footer.fastest-time')}
+        </div>
         <div className={styles.footerNormalText}>{convertMsToString(fastestLapTime)}</div>
       </div>
     ),
     itemTwo: (
       <div>
-        <div className={styles.footerSmallHeader}>{t('leaderboard.summary-footer.avg-lap-time')}</div>
+        <div className={styles.footerSmallHeader}>
+          {t('leaderboard.summary-footer.avg-lap-time')}
+        </div>
         <div className={styles.footerNormalText}>{convertMsToString(avgLapTime)}</div>
       </div>
     ),
     itemThree: (
       <div>
-        <div className={styles.footerSmallHeader}>{t('leaderboard.summary-footer.lap-completion-ratio')}</div>
+        <div className={styles.footerSmallHeader}>
+          {t('leaderboard.summary-footer.lap-completion-ratio')}
+        </div>
         <div className={styles.footerNormalText}>{lapCompletionRatio}%</div>
       </div>
     ),
     itemFour: (
       <div>
-        <div className={styles.footerSmallHeader}>{t('leaderboard.summary-footer.avg-laps-per-attempt')}</div>
+        <div className={styles.footerSmallHeader}>
+          {t('leaderboard.summary-footer.avg-laps-per-attempt')}
+        </div>
         <div className={styles.footerNormalText}>{avgLapsPerAttempt}</div>
       </div>
     ),
@@ -63,7 +71,9 @@ const RaceSummaryFooter = (params: any) => {
   if (raceFormat === 'average' && visible) {
     displayInformation.itemOne = (
       <div>
-        <div className={styles.footerSmallHeader}>{t('leaderboard.summary-footer.avg.fastest-time')}</div>
+        <div className={styles.footerSmallHeader}>
+          {t('leaderboard.summary-footer.avg.fastest-time')}
+        </div>
         <div className={styles.footerNormalText}>
           {fastestAverageLap ? convertMsToString(fastestAverageLap.avgTime) : t('leaderboard.DNF')}
         </div>
@@ -72,7 +82,9 @@ const RaceSummaryFooter = (params: any) => {
 
     displayInformation.itemTwo = (
       <div>
-        <div className={styles.footerSmallHeader}>{t('leaderboard.summary-footer.avg.fastest-laps')}</div>
+        <div className={styles.footerSmallHeader}>
+          {t('leaderboard.summary-footer.avg.fastest-laps')}
+        </div>
         <div className={styles.footerNormalText}>
           {fastestAverageLap
             ? `${fastestAverageLap.startLapId + 1} - ${fastestAverageLap.endLapId + 1}`
@@ -83,7 +95,9 @@ const RaceSummaryFooter = (params: any) => {
 
     displayInformation.itemThree = (
       <div>
-        <div className={styles.footerSmallHeader}>{t('leaderboard.summary-footer.avg.max-concecutive')}</div>
+        <div className={styles.footerSmallHeader}>
+          {t('leaderboard.summary-footer.avg.max-concecutive')}
+        </div>
         <div className={styles.footerNormalText}>{mostConcecutiveLaps}</div>
       </div>
     );
@@ -117,7 +131,10 @@ const RaceSummaryFooter = (params: any) => {
                   <span className={styles.summaryIdentityIcon}>
                     {parsedAvatar ? (
                       <>
-                        <Avatar avatarStyle="Transparent" {...(parsedAvatar as Record<string, string>)} />
+                        <Avatar
+                          avatarStyle="Transparent"
+                          {...(parsedAvatar as Record<string, string>)}
+                        />
                         {countryCode && (
                           <span className={styles.summaryIdentityFlag}>
                             <Flag countryCode={countryCode} />
@@ -138,11 +155,15 @@ const RaceSummaryFooter = (params: any) => {
             <div className={styles.footerNormalText}>#{overallRank}</div>
           </div>
           <div>
-            <div className={styles.footerSmallHeader}>{t('leaderboard.summary-footer.consistency')}</div>
+            <div className={styles.footerSmallHeader}>
+              {t('leaderboard.summary-footer.consistency')}
+            </div>
             <div className={styles.footerNormalText}>#{consistency}</div>
           </div>
           <div>
-            <div className={styles.footerSmallHeader}>{t('leaderboard.summary-footer.gap-to-fastest')}</div>
+            <div className={styles.footerSmallHeader}>
+              {t('leaderboard.summary-footer.gap-to-fastest')}
+            </div>
             <div className={styles.footerNormalText}>
               {gapToFastest >= 0 ? convertMsToString(gapToFastest) : t('leaderboard.DNF')}
             </div>

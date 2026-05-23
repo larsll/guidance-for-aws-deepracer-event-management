@@ -1,6 +1,6 @@
+import Avatar from '@vierweb/avataaars';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Avatar from 'avataaars';
 import useInterval from '../hooks/useInterval';
 import { Flag } from './flag';
 import { parseAvatarConfig } from './parseAvatarConfig';
@@ -51,7 +51,12 @@ const RaceOverlayInfo = ({
   // raw timing values
   const [bestLapMs, setBestLapMs] = useState(0);
   const [bestAvgMs, setBestAvgMs] = useState(0);
-  const [fastestAvgLap, setFastestAvgLap] = useState<AvgLap>({ avgTime: 0, startLapId: 0, endLapId: 0, dnf: true });
+  const [fastestAvgLap, setFastestAvgLap] = useState<AvgLap>({
+    avgTime: 0,
+    startLapId: 0,
+    endLapId: 0,
+    dnf: true,
+  });
   const [currentLapMs, setCurrentLapMs] = useState(0);
   const [remainingTimeMs, setRemainingTimeMs] = useState(0);
 
@@ -62,7 +67,9 @@ const RaceOverlayInfo = ({
     milliseconds: '0',
   });
 
-  const [bestAvgDisplayTime, setBestAvgDisplayTime] = useState<TimeDisplay & { startLapId: number; endLapId: number; dnf: boolean }>({
+  const [bestAvgDisplayTime, setBestAvgDisplayTime] = useState<
+    TimeDisplay & { startLapId: number; endLapId: number; dnf: boolean }
+  >({
     minutes: '0',
     seconds: '0',
     milliseconds: '0',
@@ -207,7 +214,9 @@ const RaceOverlayInfo = ({
       <thead>
         <tr>
           <th>
-            <span className={styles.footerItemText}>{t('leaderboard.race-info-footer.time-remaining')}</span>
+            <span className={styles.footerItemText}>
+              {t('leaderboard.race-info-footer.time-remaining')}
+            </span>
           </th>
           <th>
             <span className={styles.footerItemText}>
@@ -217,7 +226,9 @@ const RaceOverlayInfo = ({
             </span>
           </th>
           <th>
-            <span className={styles.footerItemText}>{t('leaderboard.race-info-footer.current-lap')}</span>
+            <span className={styles.footerItemText}>
+              {t('leaderboard.race-info-footer.current-lap')}
+            </span>
           </th>
         </tr>
       </thead>
@@ -244,7 +255,9 @@ const RaceOverlayInfo = ({
   return (
     <>
       <div className={styles.footerTop}>
-        <span className={styles.footerItemText}>{t('leaderboard.race-info-footer.currently-racing')}</span>
+        <span className={styles.footerItemText}>
+          {t('leaderboard.race-info-footer.currently-racing')}
+        </span>
         <span className={styles.footerItemDigits}>{username}</span>
         {(parsedAvatar || countryCode) && (
           <span className={styles.overlayIdentity}>

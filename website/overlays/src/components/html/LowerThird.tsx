@@ -1,4 +1,4 @@
-import Avatar from 'avataaars';
+import Avatar from '@vierweb/avataaars';
 import { GetFormattedLapTime, GetFormattedTotalTime } from '../../format';
 import { racingStatusColors } from '../../theme/racing-status-colors';
 import { Flag } from '../Flag';
@@ -18,7 +18,7 @@ type LapStatus = 'fastestOfEvent' | 'fastestOfRace' | 'valid';
 function classifyLap(
   lapMs: number | null,
   racerBestMs: number | null,
-  eventBestMs: number | null,
+  eventBestMs: number | null
 ): LapStatus | null {
   if (lapMs == null || lapMs <= 0) return null;
   if (eventBestMs != null && lapMs <= eventBestMs) return 'fastestOfEvent';
@@ -95,13 +95,8 @@ export function LowerThird({
       <div className={styles.identity}>
         {parsedAvatar ? (
           <span className={styles.avatar}>
-            <Avatar
-              avatarStyle="Transparent"
-              {...(parsedAvatar as Record<string, string>)}
-            />
-            {countryCode ? (
-              <Flag countryCode={countryCode} className={styles.flagOverlay} />
-            ) : null}
+            <Avatar avatarStyle="Transparent" {...(parsedAvatar as Record<string, string>)} />
+            {countryCode ? <Flag countryCode={countryCode} className={styles.flagOverlay} /> : null}
           </span>
         ) : countryCode ? (
           <Flag countryCode={countryCode} className={styles.flagSolo} />
