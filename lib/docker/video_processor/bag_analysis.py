@@ -465,7 +465,7 @@ def analyze_bag(bag_path: str, metadata: ModelMetadata) -> Dict:
     while reader.has_next() and s < 60:
         step = {}
 
-        (_, data, _) = reader.read_next()
+        _, data, _ = reader.read_next()
         msg = deserialize_message(data, InferResultsArray)
 
         # Timestamp
@@ -483,7 +483,7 @@ def analyze_bag(bag_path: str, metadata: ModelMetadata) -> Dict:
         s += 1
 
     while reader.has_next():
-        (_, _, _) = reader.read_next()
+        _, _, _ = reader.read_next()
         s += 1
 
     df = pd.json_normalize(steps_data["steps"])
