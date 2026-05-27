@@ -1,10 +1,14 @@
 import * as cdk from 'aws-cdk-lib';
-import { Aspects, Environment, Stage } from 'aws-cdk-lib';
+import { Aspects, Duration, Environment, RemovalPolicy, Stage } from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as notifications from 'aws-cdk-lib/aws-codestarnotifications';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as kms from 'aws-cdk-lib/aws-kms';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subs from 'aws-cdk-lib/aws-sns-subscriptions';
+import * as customResources from 'aws-cdk-lib/custom-resources';
 import * as pipelines from 'aws-cdk-lib/pipelines';
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
@@ -73,7 +77,14 @@ export class CdkPipelineStack extends cdk.Stack {
     // setup for pseudo parameters
     const stack = cdk.Stack.of(this);
 
+    const artifactBucket = new s3.Bucket(this, 'PipelineArtifactsBucket', {
+      enforceSSL: true,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+    });
+
     const pipeline = new pipelines.CodePipeline(this, 'Pipeline', {
+      artifactBucket,
       dockerEnabledForSynth: true,
       publishAssetsInParallel: false,
       // Add this to fix asset publishing steps
@@ -171,11 +182,12 @@ export class CdkPipelineStack extends cdk.Stack {
         'npm install',
         'cd website && npm install --legacy-peer-deps && npm test && cd ..',
         'cd website/leaderboard && npm install --legacy-peer-deps && npm test && cd ../..',
+        'cd website/overlays && npm install --legacy-peer-deps && npm test && cd ../..',
       ],
       partialBuildSpec: codebuild.BuildSpec.fromObject({
         reports: {
           website_test_reports: {
-            files: ['junit-website.xml', 'junit-leaderboard.xml'],
+            files: ['junit-website.xml', 'junit-leaderboard.xml', 'junit-overlays.xml'],
             'base-directory': 'reports',
             'file-format': 'JUNITXML',
           },
@@ -252,7 +264,7 @@ export class CdkPipelineStack extends cdk.Stack {
           " public.ecr.aws/sam/build-nodejs22.x:latest bash -c 'npm install --cache /tmp/empty-cache --legacy-peer-deps && npm run build'",
         'mkdir -p ./website/public/leaderboard && cp -r ./website/leaderboard/build/. ./website/public/leaderboard/',
         'docker run --rm -v $(pwd):/foo -w /foo/website/overlays' +
-          " public.ecr.aws/sam/build-nodejs22.x:latest bash -c 'npm install --cache /tmp/empty-cache && npm run build'",
+          " public.ecr.aws/sam/build-nodejs22.x:latest bash -c 'npm install --cache /tmp/empty-cache --legacy-peer-deps && npm run build'",
         'mkdir -p ./website/public/overlays && cp -r ./website/overlays/build/. ./website/public/overlays/',
 
         // Build main site (sub-apps already in public/)
@@ -311,6 +323,103 @@ export class CdkPipelineStack extends cdk.Stack {
 
     pipeline.buildPipeline();
 
+    // The pipeline artifact bucket (created above with SSL + encryption +
+    // block-public-access) defaults to RemovalPolicy RETAIN, so
+    // `drem-pipeline-<label>-pipelineartifactsbucket-*` is orphaned every
+    // time the pipeline stack is deleted (the bucket is also non-empty by
+    // then). Flip it to DESTROY and wire a small custom resource that
+    // empties it on stack delete. The bucket only holds CodePipeline build
+    // artifacts — no user data — so dropping it is safe.
+    artifactBucket.applyRemovalPolicy(RemovalPolicy.DESTROY);
+
+    const bucketEmptier = new lambda.Function(this, 'PipelineArtifactBucketEmptier', {
+      description: 'Empty the CDK Pipelines artifact bucket on stack delete',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: 'index.handler',
+      timeout: Duration.minutes(5),
+      memorySize: 256,
+      code: lambda.Code.fromInline(`
+import boto3
+s3 = boto3.client("s3")
+
+def handler(event, context):
+    if event.get("RequestType") != "Delete":
+        return {}
+    bucket = event["ResourceProperties"]["BucketName"]
+    paginator = s3.get_paginator("list_object_versions")
+    for page in paginator.paginate(Bucket=bucket):
+        keys = []
+        for v in page.get("Versions", []) + page.get("DeleteMarkers", []):
+            keys.append({"Key": v["Key"], "VersionId": v["VersionId"]})
+        if keys:
+            s3.delete_objects(Bucket=bucket, Delete={"Objects": keys, "Quiet": True})
+    return {}
+`),
+    });
+    artifactBucket.grantReadWrite(bucketEmptier);
+    bucketEmptier.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:ListBucketVersions'],
+        resources: [artifactBucket.bucketArn],
+      })
+    );
+
+    const bucketEmptierProvider = new customResources.Provider(this, 'PipelineArtifactBucketEmptierProvider', {
+      onEventHandler: bucketEmptier,
+    });
+
+    new cdk.CustomResource(this, 'PipelineArtifactBucketEmptierCustomResource', {
+      serviceToken: bucketEmptierProvider.serviceToken,
+      properties: {
+        BucketName: artifactBucket.bucketName,
+      },
+    });
+
+    // cdk-nag suppressions for the emptier Lambda + the CDK Provider's
+    // framework Lambda. Both use the AWS-managed AWSLambdaBasicExecutionRole
+    // applied by default by the Lambda L2 construct, and the framework
+    // Lambda's runtime is pinned by aws-cdk-lib/custom-resources. We can't
+    // control either without restating the same permissions or forking
+    // the construct.
+    NagSuppressions.addResourceSuppressions(
+      bucketEmptier,
+      [
+        {
+          id: 'AwsSolutions-IAM4',
+          reason:
+            'AWSLambdaBasicExecutionRole is the default Lambda execution role; replacing it would restate the same permissions.',
+          appliesTo: ['Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'],
+        },
+        {
+          id: 'AwsSolutions-L1',
+          reason:
+            'PYTHON_3_12 is the latest stable Lambda runtime supported by the CDK version in use; bump when CDK exposes a newer Python.',
+        },
+      ],
+      true
+    );
+    NagSuppressions.addResourceSuppressions(
+      bucketEmptierProvider,
+      [
+        {
+          id: 'AwsSolutions-IAM4',
+          reason: 'Provider framework Lambda uses CDK-managed AWSLambdaBasicExecutionRole.',
+          appliesTo: ['Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'],
+        },
+        {
+          id: 'AwsSolutions-IAM5',
+          reason:
+            'Provider framework Lambda needs lambda:InvokeFunction on the onEvent handler; CDK wildcards the function version arn.',
+        },
+        {
+          id: 'AwsSolutions-L1',
+          reason:
+            'Provider framework Lambda runtime is pinned by aws-cdk-lib/custom-resources and cannot be controlled here.',
+        },
+      ],
+      true
+    );
+
     // Suppress cdk-nag findings for CDK Pipelines-managed resources we don't control
     NagSuppressions.addStackSuppressions(this, [
       {
@@ -323,7 +432,8 @@ export class CdkPipelineStack extends cdk.Stack {
       },
       {
         id: 'AwsSolutions-S1',
-        reason: 'Access logging for the pipeline artifacts bucket is managed by CDK Pipelines',
+        reason:
+          'Access logging for the pipeline artifacts bucket is not required for this internal CI/CD artifact store.',
       },
       {
         id: 'AwsSolutions-SNS3',
@@ -331,7 +441,13 @@ export class CdkPipelineStack extends cdk.Stack {
       },
     ]);
 
-    const topic = new sns.Topic(this, 'PipelineTopic');
+    const topicKey = new kms.Key(this, 'PipelineTopicKey', {
+      enableKeyRotation: true,
+      description: 'KMS key for pipeline notification SNS topic',
+    });
+    const topic = new sns.Topic(this, 'PipelineTopic', {
+      masterKey: topicKey,
+    });
     topic.addSubscription(new subs.EmailSubscription(props.email));
     const rule = new notifications.NotificationRule(this, 'NotificationRule', {
       source: pipeline.pipeline,
