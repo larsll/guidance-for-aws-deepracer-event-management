@@ -28,6 +28,12 @@ ifdef droa_user_pool_id
 droa_args = -c DROA_USER_POOL_ID=$(droa_user_pool_id)
 else
 droa_args =
+endif 
+
+ifdef disable_cw_rum
+cwrum_args = -c disable_cw_rum=$(disable_cw_rum)
+else
+cwrum_args =
 endif
 
 ifdef require_approval
@@ -48,7 +54,7 @@ VENV_PYTHON := .venv/bin/python3
 CDK_CONTEXT := -c email=$(email) -c label=$(label) -c account=$(account_id) \
                -c region=$(region) -c source_branch=$(source_branch) \
                -c source_repo=$(source_repo) $(domain_name_arg) \
-			   $(droa_args)
+			   $(droa_args) $(cwrum_args)
 
 ## ----------------------------------------------------------------------------
 .PHONY: help

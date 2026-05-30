@@ -26,6 +26,7 @@ export interface InfrastructurePipelineStageProps extends cdk.StackProps {
   env: Environment;
   domainName?: string;
   droaUserPoolId?: string;
+  cwRumEnabled?: boolean;
 }
 
 class InfrastructurePipelineStage extends Stage {
@@ -48,6 +49,7 @@ class InfrastructurePipelineStage extends Stage {
     });
     const stack = new DeepracerEventManagerStack(this, 'infrastructure', {
       baseStackName: baseStack.stackName,
+      cwRumEnabled: props.cwRumEnabled,
     });
     // Base deploys before infrastructure so SSM parameters exist when
     // CloudFormation resolves them at changeset creation time.
@@ -67,6 +69,7 @@ export interface CdkPipelineStackProps extends cdk.StackProps {
   env: Environment;
   domainName?: string;
   droaUserPoolId?: string;
+  cwRumEnabled?: boolean;
   requireApproval?: boolean;
 }
 
@@ -134,6 +137,7 @@ export class CdkPipelineStack extends cdk.Stack {
             ` -c source_branch=${props.sourceBranchName} -c source_repo=${props.sourceRepo}` +
             (props.domainName ? ` -c domain_name=${props.domainName}` : '') +
             (props.droaUserPoolId ? ` -c DROA_USER_POOL_ID=${props.droaUserPoolId}` : '') +
+            (props.cwRumEnabled === false ? ` -c disable_cw_rum=true` : '') +
             (props.requireApproval === false ? ` -c require_approval=false` : ''),
         ],
         partialBuildSpec: codebuild.BuildSpec.fromObject({
