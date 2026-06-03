@@ -77,7 +77,7 @@ if (droaUserPoolId) {
   console.info('Using existing DRoA User Pool ID: ' + droaUserPoolId);
 }
 
-const cwRumEnabled = app.node.tryGetContext('disable_cw_rum') !== 'true';
+const cwRumEnabled = false; // hard-coded off for this branch
 if (!cwRumEnabled) {
   console.info('CloudWatch RUM is disabled');
 }
