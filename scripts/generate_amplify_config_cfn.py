@@ -60,15 +60,13 @@ with open("cfn.outputs") as json_file:
     }
 
     if cwRumAppMonitorId:
-        output_data["Rum"] = (
-            {
-                "drem": {
-                    "id": cwRumAppMonitorId,
-                    "region": cwRumAppMonitorRegion,
-                    "config": cwRumAppMonitorConfig,
-                },
+        output_data["Rum"] = {
+            "drem": {
+                "id": cwRumAppMonitorId,
+                "region": cwRumAppMonitorRegion,
+                "config": cwRumAppMonitorConfig,
             },
-        )
+        }
 
     print(json.dumps(output_data, indent=4))
 
