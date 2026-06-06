@@ -16,6 +16,7 @@ import defaultAvatar from '../assets/defaultAvatar.svg';
 interface LeaderboardTableProps {
   leaderboardEntries: any[];
   scrollEnabled: boolean;
+  scrollIntervalMs: number;
   fastest: boolean;
   showFlag: boolean;
   highlightedUsername?: string | null;
@@ -31,6 +32,7 @@ const SCROLL_BACK_TO_TOP_MS = 60_000;
 const LeaderboardTable = ({
   leaderboardEntries,
   scrollEnabled,
+  scrollIntervalMs,
   fastest,
   showFlag,
   highlightedUsername = null,
@@ -40,12 +42,18 @@ const LeaderboardTable = ({
   const [leaderboardListItems, SetLeaderboardListItems] = useState<React.ReactNode>(<div></div>);
   const entriesRef = useRef<HTMLDivElement | null>(null);
   const backToTopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const entriesLengthRef = useRef(leaderboardEntries.length);
   const windowSize = useWindowSize();
   const aspectRatio = (windowSize.width ?? 0) / (windowSize.height ?? 1);
 
   const ScrollTo = ({ duration, toRef }: { duration: number; toRef: any }) => {
     return scrollTo({ ref: toRef, duration });
   };
+
+  // Keep entriesLengthRef current so the scroll interval always uses the live count.
+  useEffect(() => {
+    entriesLengthRef.current = leaderboardEntries.length;
+  }, [leaderboardEntries]);
 
   // Update the leaderboard list
   useEffect(() => {
@@ -184,23 +192,22 @@ const LeaderboardTable = ({
 
   /* optional hide the scrollbar, but then lose visuals of progress */
   useEffect(() => {
-    let timer;
-    let interval;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (scrollEnabled === true) {
-      // 👇️ scroll to bottom of leaderboard
-
-      const timeOutBeforeScroll = 600000; // start scrolling every 10 min = 600000ms
-      interval = setInterval(() => {
-        const scrollTimeDuration = leaderboardEntries.length * 1000;
-
+      const doScroll = () => {
+        const scrollTimeDuration = entriesLengthRef.current * 1000;
         ScrollTo({ duration: scrollTimeDuration, toRef: entriesRef });
-      }, timeOutBeforeScroll);
+      };
+
+      timer = setTimeout(doScroll, scrollIntervalMs);
+      interval = setInterval(doScroll, scrollIntervalMs);
     }
     return () => {
       if (interval) clearInterval(interval);
       if (timer) clearTimeout(timer);
     };
-  }, [scrollEnabled]);
+  }, [scrollEnabled, scrollIntervalMs]);
 
   return (
     <div className={styles.layout}>

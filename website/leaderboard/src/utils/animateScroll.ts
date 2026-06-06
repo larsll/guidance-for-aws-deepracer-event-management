@@ -26,12 +26,7 @@ export function animateScroll({ targetPosition, initialPosition, duration, eleme
   const cancelAnimationFrame = window.cancelAnimationFrame;
 
   // maximum amount of pixels we can scroll
-  //const maxAvailableScroll =
-  //  document.documentElement.scrollHeight - document.documentElement.clientHeight;
-
-  //const maxAvailableScroll = element.scrollHeight - element.clientHeight;
-
-  const maxAvailableScroll = element.scrollHeight;
+  const maxAvailableScroll = element.scrollHeight - element.clientHeight;
 
   const amountOfPixelsToScroll = initialPosition - maxAvailableScroll;
 

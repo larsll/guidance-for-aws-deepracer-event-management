@@ -19,10 +19,11 @@ interface LeaderboardProps {
   language?: string;
   showQrCode: boolean;
   scrollEnabled: boolean;
+  scrollIntervalMs: number;
   showFlag: boolean;
 }
 
-const Leaderboard = ({ eventId, trackId, raceFormat, showQrCode, scrollEnabled, showFlag }: LeaderboardProps) => {
+const Leaderboard = ({ eventId, trackId, raceFormat, showQrCode, scrollEnabled, scrollIntervalMs, showFlag }: LeaderboardProps) => {
   const [leaderboardEntries, SetleaderboardEntries] = useState<any[]>([]);
   const [leaderboardConfig, setLeaderboardConfig] = useState<any>({
     leaderBoardTitle: '',
@@ -287,6 +288,7 @@ const Leaderboard = ({ eventId, trackId, raceFormat, showQrCode, scrollEnabled, 
             <LeaderboardTable
               leaderboardEntries={leaderboardEntries}
               scrollEnabled={scrollEnabled}
+              scrollIntervalMs={scrollIntervalMs}
               fastest={raceFormat === 'fastest'}
               showFlag={showFlag}
               highlightedUsername={highlightedUsername}

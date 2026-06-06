@@ -20,6 +20,11 @@ const LeaderboardWrapper = () => {
   const scrollParam = queryParams.get('scroll');
   const scroll = scrollParam === null ? true : /true/i.test(scrollParam);
 
+  const scrollIntervalParam = queryParams.get('scrollInterval');
+  const scrollIntervalMs = scrollIntervalParam !== null && Number(scrollIntervalParam) > 0
+    ? Number(scrollIntervalParam) * 1000
+    : 600_000;
+
   const raceFormat = queryParams.get('format') ?? 'fastest';
 
   const showFlagParam = queryParams.get('flag');
@@ -29,6 +34,7 @@ const LeaderboardWrapper = () => {
   console.debug('language: ' + language);
   console.debug('trackId: ' + trackId);
   console.debug('scroll: ' + scroll);
+  console.debug('scrollIntervalMs: ' + scrollIntervalMs);
   console.debug('raceFormat: ' + raceFormat);
   console.debug('showQRcode: ' + showQRcode);
   console.debug('showFlag: ' + showFlag);
@@ -45,6 +51,7 @@ const LeaderboardWrapper = () => {
       language={language}
       showQrCode={showQRcode}
       scrollEnabled={scroll}
+      scrollIntervalMs={scrollIntervalMs}
       showFlag={showFlag}
     />
   );
