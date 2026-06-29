@@ -3,6 +3,10 @@ import json
 with open("cfn.outputs") as json_file:
     data = json.load(json_file)
 
+    useExternalIdp = "false"
+    cwRumAppMonitorId = None
+    cwRumAppMonitorRegion = None
+    cwRumAppMonitorConfig = None
     for key in data:
         if key["OutputKey"].startswith("appsyncEndpoint"):
             appsyncEndpoint = key["OutputValue"]
@@ -28,6 +32,8 @@ with open("cfn.outputs") as json_file:
             cwRumAppMonitorConfig = key["OutputValue"]
         if key["OutputKey"] == "appsyncApiKey":
             appsyncApiKey = key["OutputValue"]
+        if key["OutputKey"] == "useExternalIdp":
+            useExternalIdp = key["OutputValue"]
 
     output_data = {
         "Auth": {
@@ -48,14 +54,19 @@ with open("cfn.outputs") as json_file:
             "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
             "aws_appsync_apiKey": appsyncApiKey,
         },
-        "Rum": {
+        "Features": {
+            "useExternalIdp": useExternalIdp == "true",
+        },
+    }
+
+    if cwRumAppMonitorId:
+        output_data["Rum"] = {
             "drem": {
                 "id": cwRumAppMonitorId,
                 "region": cwRumAppMonitorRegion,
                 "config": cwRumAppMonitorConfig,
             },
-        },
-    }
+        }
 
     print(json.dumps(output_data, indent=4))
 

@@ -49,11 +49,16 @@ def lambda_handler(event: dict, context: LambdaContext) -> str:
 
     if len(response["Users"]) == 1:
         user = clean_json(response["Users"][0])
-        # extract sub to root level
+        # extract sub and racerName to root level
         for attribute in user["Attributes"]:
             if attribute["Name"] == "sub":
                 user["sub"] = attribute["Value"]
-                break
+            if attribute["Name"] == "custom:racerName":
+                user["racerName"] = attribute["Value"]
+            elif attribute["Name"] == "preferred_username" and "racerName" not in user:
+                user["racerName"] = attribute["Value"]
+        if "racerName" not in user:
+            user["racerName"] = user["Username"]
         logger.info(user)
 
     query = """ mutation UserCreated(
@@ -65,6 +70,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> str:
         $UserStatus: String
         $Username: String
         $sub: ID
+        $racerName: String
     ) {
         userCreated(
         Attributes: $Attributes
@@ -75,6 +81,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> str:
         UserStatus: $UserStatus
         Username: $Username
         sub: $sub
+        racerName: $racerName
         ) {
         Attributes {
             Name
@@ -91,6 +98,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> str:
         UserStatus
         Username
         sub
+        racerName
         }
     }
     """

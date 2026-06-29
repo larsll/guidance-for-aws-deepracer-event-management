@@ -57,9 +57,16 @@ def __get_username_by_user_id(userId: str) -> tuple:
     )
     logger.info(response)
     user = response["Users"][0]
+    # prefer custom:racerName, fall back to preferred_username, then Username
     username = user["Username"]
     countryCode = None
     for attributes in user["Attributes"]:
+        if attributes["Name"] == "custom:racerName":
+            username = attributes["Value"]
+        elif (
+            attributes["Name"] == "preferred_username" and username == user["Username"]
+        ):
+            username = attributes["Value"]
         if attributes["Name"] == "custom:countryCode":
             countryCode = attributes["Value"]
 

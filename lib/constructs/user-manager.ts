@@ -1,4 +1,4 @@
-import { DockerImage, Duration } from 'aws-cdk-lib';
+import { DockerImage, Duration, NestedStack, NestedStackProps } from 'aws-cdk-lib';
 import * as appsync from 'aws-cdk-lib/aws-appsync';
 import { IEventBus, Rule } from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
@@ -19,7 +19,7 @@ import { StandardLambdaPythonFunction } from './standard-lambda-python-function'
 
 import { Construct } from 'constructs';
 
-export interface UserManagerProps {
+export interface UserManagerProps extends NestedStackProps {
   authenticatedUserRole: IRole;
   userPoolId: string;
   userPoolArn: string;
@@ -42,13 +42,11 @@ export interface UserManagerProps {
   eventbus: IEventBus;
 }
 
-export class UserManager extends Construct {
-  // public readonly origin: cloudfront.IOrigin;
-  // public readonly sourceBucket: s3.IBucket;
+export class UserManager extends NestedStack {
   public readonly userApiObject: ObjectType;
 
   constructor(scope: Construct, id: string, props: UserManagerProps) {
-    super(scope, id);
+    super(scope, id, props);
 
     // delete users Function
     const delete_user_function = new StandardLambdaPythonFunction(this, 'delete_user_function', {
@@ -107,6 +105,7 @@ export class UserManager extends Construct {
         effect: iam.Effect.ALLOW,
         actions: [
           'cognito-idp:AdminCreateUser',
+          'cognito-idp:AdminUpdateUserAttributes',
           'cognito-idp:ListUsers',
           'cognito-idp:ListGroups',
           'cognito-idp:ListUsersInGroup',
@@ -216,6 +215,7 @@ export class UserManager extends Construct {
         UserStatus: GraphqlType.string(),
         MFAOptions: user_object_mfa_options.attribute({ isList: true, isRequired: false }),
         sub: GraphqlType.id({ isRequired: false }),
+        racerName: GraphqlType.string({ isRequired: false }),
       },
       directives: [Directive.cognito('admin', 'registration', 'operator'), Directive.iam()],
     });
@@ -318,6 +318,20 @@ export class UserManager extends Construct {
       })
     );
 
+    props.appsyncApi.schema.addMutation(
+      'updateUserAttributes',
+      new ResolvableField({
+        args: {
+          username: GraphqlType.string({ isRequired: true }),
+          preferredUsername: GraphqlType.string({ isRequired: true }),
+          countryCode: GraphqlType.string({ isRequired: false }),
+        },
+        returnType: user_object.attribute(),
+        dataSource: users_data_source,
+        directives: [Directive.cognito('admin', 'operator')],
+      })
+    );
+
     props.appsyncApi.schema.addSubscription(
       'onUserUpdated',
       new ResolvableField({
@@ -349,6 +363,7 @@ export class UserManager extends Construct {
             isRequired: false,
           }),
           sub: GraphqlType.id({ isRequired: false }),
+          racerName: GraphqlType.string({ isRequired: false }),
         },
         returnType: user_object.attribute(),
         dataSource: props.appsyncApi.noneDataSource,

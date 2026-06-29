@@ -31,7 +31,8 @@ export function ModelUpload(): JSX.Element {
     const getData = async () => {
       getCurrentAuthUser().then((authUser) => {
         setSub(authUser.sub);
-        setUsername(authUser.username);
+        // Keep model ownership aligned with Settings display name.
+        setUsername(authUser.displayName);
       });
     };
 
@@ -148,7 +149,13 @@ export function ModelUpload(): JSX.Element {
         limitShowMore: t('upload.show-more'),
         errorIconAriaLabel: t('common.error'),
       }}
-      accept=".tar.gz"
+      // Firefox doesn't recognise the compound `.tar.gz` extension in the
+      // HTML `accept` attribute and greys out all files. List `.gz` plus the
+      // gzip MIME types so Firefox keeps .tar.gz files selectable; the
+      // `saveModel` filename check above (the `/^[a-zA-Z0-9-_]+\.tar\.gz$/`
+      // regex) still enforces an exact `.tar.gz` match after selection, so
+      // non-tar.gz selections are rejected. Closes #220.
+      accept=".tar.gz,.gz,application/gzip,application/x-gzip,application/x-compressed-tar"
       multiple
       showFileSize
       showFileLastModified

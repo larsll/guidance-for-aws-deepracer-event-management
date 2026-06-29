@@ -26,7 +26,7 @@ export const useUsers = (): [User[], boolean, (userId: string | null | undefined
       const user = users.find((user) => user.sub === userId);
       if (user == null) return userId;
 
-      return user.Username;
+      return user.RacerName || user.Username;
     },
     [users]
   );

@@ -36,6 +36,7 @@ import { RaceResultsPdf } from './constructs/race-results-pdf';
 
 export interface DeepracerEventManagerStackProps extends cdk.StackProps {
   baseStackName: string;
+  cwRumEnabled?: boolean;
 }
 
 export class DeepracerEventManagerStack extends cdk.Stack {
@@ -121,6 +122,9 @@ export class DeepracerEventManagerStack extends cdk.Stack {
 
     // Get the WAF Web ACL ARN from SSM, created in the base stack
     const wafWebAclRegionalArn = ssm.StringParameter.valueForStringParameter(this, `${ssmBase}/regionalWafWebAclArn`);
+
+    // Get useExternalIdp from SSM, created in the base stack
+    const useExternalIdp = ssm.StringParameter.valueForStringParameter(this, `/${props.baseStackName}/useExternalIdp`);
 
     // Appsync API
     const appsyncResources = this.appsyncApi(this.stackName, userPool, wafWebAclRegionalArn);
@@ -263,9 +267,12 @@ export class DeepracerEventManagerStack extends cdk.Stack {
       logsBucket: logsBucket,
     });
 
-    const cwRumAppMonitor = new CwRumAppMonitor(this, 'CwRumAppMonitor', {
-      domainName: cloudfrontDomainName,
-    });
+    const cwRumEnabled = props.cwRumEnabled !== false;
+    const cwRumAppMonitor = cwRumEnabled
+      ? new CwRumAppMonitor(this, 'CwRumAppMonitor', {
+          domainName: cloudfrontDomainName,
+        })
+      : null;
 
     // Outputs
     new cdk.CfnOutput(this, 'DremWebsite', {
@@ -292,21 +299,23 @@ export class DeepracerEventManagerStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'region', { value: stack.region });
 
-    new cdk.CfnOutput(this, 'rumScript', {
-      value: cwRumAppMonitor.script,
-    });
+    if (cwRumAppMonitor) {
+      new cdk.CfnOutput(this, 'rumScript', {
+        value: cwRumAppMonitor.script,
+      });
 
-    new cdk.CfnOutput(this, 'cwRumAppMonitorId', {
-      value: cwRumAppMonitor.id,
-    });
+      new cdk.CfnOutput(this, 'cwRumAppMonitorId', {
+        value: cwRumAppMonitor.id,
+      });
 
-    new cdk.CfnOutput(this, 'cwRumAppMonitorRegion', {
-      value: cwRumAppMonitor.region,
-    });
+      new cdk.CfnOutput(this, 'cwRumAppMonitorRegion', {
+        value: cwRumAppMonitor.region,
+      });
 
-    new cdk.CfnOutput(this, 'cwRumAppMonitorConfig', {
-      value: cwRumAppMonitor.config,
-    });
+      new cdk.CfnOutput(this, 'cwRumAppMonitorConfig', {
+        value: cwRumAppMonitor.config,
+      });
+    }
 
     this.appsyncId = new cdk.CfnOutput(this, 'appsyncId', { value: appsyncResources.api.apiId });
 
@@ -328,6 +337,10 @@ export class DeepracerEventManagerStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'userPoolId', {
       value: userPoolId,
+    });
+
+    new cdk.CfnOutput(this, 'useExternalIdp', {
+      value: useExternalIdp,
     });
 
     // CDK BucketDeployment and LogRetention singleton Lambdas — runtime and role are CDK-managed.

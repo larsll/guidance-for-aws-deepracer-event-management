@@ -3,6 +3,7 @@ import io
 import os
 import re
 import tarfile
+import time
 
 import appsync_helpers
 import boto3
@@ -44,7 +45,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> str:
                 key = record["s3"]["object"]["key"]
 
                 matched_bags, batch_job_id = process_bag_files(
-                    bucket, key, output_bucket, "Manual"
+                    bucket, key, output_bucket, f"Manual-{int(time.time() * 1000)}"
                 )
     elif "data" in event:
         race_data = None
@@ -528,6 +529,7 @@ def query_users(username_prefix: str = None) -> list[dict]:
         listUsers(username_prefix: $username_prefix) {
             sub
             Username
+            racerName
         }    
     }
     """
@@ -544,7 +546,7 @@ def query_users(username_prefix: str = None) -> list[dict]:
 
         if response.get("data", {}).get("listUsers"):
             for user in response["data"]["listUsers"]:
-                users.append({"username": user["Username"], "sub": user["sub"]})
+                users.append({"username": user.get("racerName", user["Username"]), "sub": user["sub"]})
 
             log_message = f"Found {len(users)} users"
             if username_prefix:

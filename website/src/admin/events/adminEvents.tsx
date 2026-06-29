@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { Button, SpaceBetween } from '@cloudscape-design/components';
+import { Button, ButtonDropdown, SpaceBetween } from '@cloudscape-design/components';
 import { useTranslation } from 'react-i18next';
 import { DeleteModal, ItemList } from '../../components/deleteModal';
 import { SimpleHelpPanelLayout } from '../../components/help-panels/simple-help-panel';
@@ -10,11 +10,12 @@ import { PageTable } from '../../components/pageTable';
 import { DrSplitPanel } from '../../components/split-panels/dr-split-panel';
 import { TableHeader } from '../../components/tableConfig';
 import useMutation from '../../hooks/useMutation';
+import { usePdfApi, type PdfType } from '../../hooks/usePdfApi';
 import { useUsers } from '../../hooks/useUsers';
 import { useStore } from '../../store/store';
 import { Event } from '../../types/domain';
 import { EventDetailsPanelContent } from './components/eventDetailsPanelContent';
-import { ColumnConfiguration, FilteringProperties } from './support-functions/eventsTableConfig';
+import { ColumnConfiguration, FilteringOptions, FilteringProperties } from './support-functions/eventsTableConfig';
 
 /**
  * AdminEvents component for managing events in the admin interface
@@ -33,10 +34,33 @@ const AdminEvents = (): JSX.Element => {
   const [, , getUserNameFromId] = useUsers();
 
   const navigate = useNavigate();
+  const { generatePdf, isGenerating } = usePdfApi();
 
   const editEventHandler = () => {
     navigate('/admin/events/edit', { state: SelectedEventsInTable[0] });
   };
+
+  // PDFs operate on a single event — organiser summary, podium, racer
+  // certificates. Enabled only when exactly one event is selected; loading
+  // state aggregated across the three types so the ButtonDropdown reflects
+  // any in-flight job for the selected event.
+  const selectedEventId =
+    SelectedEventsInTable.length === 1 ? SelectedEventsInTable[0].eventId : undefined;
+
+  const onDownloadPdf = async (type: PdfType) => {
+    if (!selectedEventId) return;
+    try {
+      await generatePdf({ eventId: selectedEventId, type });
+    } catch (err) {
+      console.error('Failed to kick off PDF generation', err);
+    }
+  };
+
+  const anyPdfGenerating = selectedEventId
+    ? (['ORGANISER_SUMMARY', 'PODIUM', 'RACER_CERTIFICATES_BULK'] as const).some((type) =>
+        isGenerating({ eventId: selectedEventId, type })
+      )
+    : false;
 
   // Add Event
   const addEventHandler = () => {
@@ -53,6 +77,7 @@ const AdminEvents = (): JSX.Element => {
   // Table config
   const columnConfiguration = ColumnConfiguration(getUserNameFromId as any, fleets);
   const filteringProperties = FilteringProperties();
+  const filteringOptions = FilteringOptions();
 
   const selectPanelContent = useCallback((selectedItems: Event[]) => {
     if (selectedItems.length === 0) {
@@ -88,6 +113,22 @@ const AdminEvents = (): JSX.Element => {
     const disableDeleteButton = SelectedEventsInTable.length === 0;
     return (
       <SpaceBetween direction="horizontal" size="xs">
+        <ButtonDropdown
+          loading={anyPdfGenerating}
+          disabled={!selectedEventId}
+          items={[
+            { id: 'summary', text: t('pdf.organiser-summary') },
+            { id: 'podium', text: t('pdf.podium') },
+            { id: 'certificates', text: t('pdf.bulk-certificates') },
+          ]}
+          onItemClick={({ detail }) => {
+            if (detail.id === 'summary') onDownloadPdf('ORGANISER_SUMMARY');
+            else if (detail.id === 'podium') onDownloadPdf('PODIUM');
+            else if (detail.id === 'certificates') onDownloadPdf('RACER_CERTIFICATES_BULK');
+          }}
+        >
+          {t('pdf.download-pdf')}
+        </ButtonDropdown>
         <Button disabled={disableEditButton} onClick={editEventHandler}>
           {t('button.edit')}
         </Button>
@@ -140,6 +181,7 @@ const AdminEvents = (): JSX.Element => {
         localStorageKey={'events-table-preferences'}
         trackBy={'eventId'}
         filteringProperties={filteringProperties as any}
+        filteringOptions={filteringOptions as any}
         filteringI18nStringsName={'events'}
       />
 

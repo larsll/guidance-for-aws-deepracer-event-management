@@ -72,6 +72,16 @@ if (domainName) {
   domainName = undefined;
 }
 
+const droaUserPoolId = (app.node.tryGetContext('DROA_USER_POOL_ID') as string | undefined) || undefined;
+if (droaUserPoolId) {
+  console.info('Using existing DRoA User Pool ID: ' + droaUserPoolId);
+}
+
+const cwRumEnabled = false; // hard-coded off for this branch
+if (!cwRumEnabled) {
+  console.info('CloudWatch RUM is disabled');
+}
+
 if (app.node.tryGetContext('manual_deploy') === 'True') {
   console.info('Manual Deploy started....');
 
@@ -79,11 +89,13 @@ if (app.node.tryGetContext('manual_deploy') === 'True') {
     email: mailAddress,
     labelName: labelName,
     domainName: domainName,
+    droaUserPoolId: droaUserPoolId,
     env: env,
   });
 
   new DeepracerEventManagerStack(app, `drem-backend-${labelName}-infrastructure`, {
     baseStackName: baseStack.stackName,
+    cwRumEnabled: cwRumEnabled,
     env: env,
   });
 } else {
@@ -95,6 +107,8 @@ if (app.node.tryGetContext('manual_deploy') === 'True') {
     sourceBranchName: sourceBranchName,
     email: mailAddress,
     domainName: domainName,
+    droaUserPoolId: droaUserPoolId,
+    cwRumEnabled: cwRumEnabled,
     requireApproval: requireApproval,
     env: env,
   });
