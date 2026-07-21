@@ -1,14 +1,14 @@
-import { Duration, NestedStack, NestedStackProps, RemovalPolicy } from 'aws-cdk-lib';
+import { DockerImage, Duration, NestedStack, NestedStackProps, RemovalPolicy } from 'aws-cdk-lib';
 import * as appsync from 'aws-cdk-lib/aws-appsync';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { IEventBus, Rule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { DockerImage } from 'aws-cdk-lib';
 import { CodeFirstSchema, Directive, GraphqlType, ObjectType, ResolvableField } from 'awscdk-appsync-utils';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
+import { ALL_COGNITO_GROUPS } from './idp';
 import { StandardLambdaPythonFunction } from './standard-lambda-python-function';
 
 export interface StatisticsProps extends NestedStackProps {
@@ -169,7 +169,7 @@ export class Statistics extends NestedStack {
         racers: GraphqlType.int({ isRequired: true }),
         laps: GraphqlType.int({ isRequired: true }),
       },
-      directives: [Directive.apiKey(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
     });
     props.appsyncApi.schema.addType(countryStatType);
 
@@ -180,7 +180,7 @@ export class Statistics extends NestedStack {
         races: GraphqlType.int({ isRequired: true }),
         laps: GraphqlType.int({ isRequired: true }),
       },
-      directives: [Directive.apiKey(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
     });
     props.appsyncApi.schema.addType(monthStatType);
 
@@ -189,7 +189,7 @@ export class Statistics extends NestedStack {
         typeOfEvent: GraphqlType.string({ isRequired: true }),
         count: GraphqlType.int({ isRequired: true }),
       },
-      directives: [Directive.apiKey(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
     });
     props.appsyncApi.schema.addType(eventTypeStatType);
 
@@ -199,7 +199,7 @@ export class Statistics extends NestedStack {
         count: GraphqlType.int({ isRequired: true }),
         bestLapMs: GraphqlType.float(),
       },
-      directives: [Directive.apiKey(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
     });
     props.appsyncApi.schema.addType(trackTypeStatType);
 
@@ -217,7 +217,7 @@ export class Statistics extends NestedStack {
         lapTimeMs: GraphqlType.float({ isRequired: true }),
         eventDate: GraphqlType.string({ isRequired: true }),
       },
-      directives: [Directive.apiKey(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
     });
     props.appsyncApi.schema.addType(fastestLapEntryType);
 
@@ -229,7 +229,7 @@ export class Statistics extends NestedStack {
         trackType: GraphqlType.string({ isRequired: true }),
         entries: fastestLapEntryType.attribute({ isList: true, isRequired: true }),
       },
-      directives: [Directive.apiKey(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
     });
     props.appsyncApi.schema.addType(fastestLapsByTrackType);
 
@@ -247,7 +247,7 @@ export class Statistics extends NestedStack {
         fastestLapsEver: fastestLapEntryType.attribute({ isList: true, isRequired: true }),
         fastestLapsByTrack: fastestLapsByTrackType.attribute({ isList: true, isRequired: true }),
       },
-      directives: [Directive.apiKey(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
     });
     props.appsyncApi.schema.addType(globalStatsType);
 
@@ -256,7 +256,7 @@ export class Statistics extends NestedStack {
       new ResolvableField({
         returnType: globalStatsType.attribute(),
         dataSource: statsDataSource,
-        directives: [Directive.apiKey(), Directive.cognito('admin', 'operator', 'commentator')],
+        directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
       })
     );
   }

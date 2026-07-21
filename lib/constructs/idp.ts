@@ -11,6 +11,8 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { StandardLambdaPythonFunction } from './standard-lambda-python-function';
 
+export const ALL_COGNITO_GROUPS = ['admin', 'operator', 'commentator', 'registration', 'racer'] as const;
+
 export interface IdpProps {
   distribution: cloudfront.IDistribution;
   defaultAdminEmail: string;
@@ -36,7 +38,6 @@ export class Idp extends Construct {
   public readonly operatorGroupRole: iam.IRole;
   public readonly commentatorGroupRole: iam.IRole;
   public readonly registrationGroupRole: iam.IRole;
-  public readonly unauthenticated_user_role: iam.IRole;
 
   constructor(scope: Construct, id: string, props: IdpProps) {
     super(scope, id);

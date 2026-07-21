@@ -23,23 +23,29 @@ import awsExports from './config.json';
  * don't need to change.
  */
 interface LegacyStreamOverlaysConfig {
+  Auth: {
+    identityPoolId: string;
+  };
   API: {
     aws_appsync_graphqlEndpoint: string;
     aws_appsync_region: string;
-    aws_appsync_authenticationType: string;
-    aws_appsync_apiKey: string;
   };
 }
 
 /** Map legacy config.json → Amplify v6 ResourcesConfig */
 function buildAmplifyConfig(legacy: LegacyStreamOverlaysConfig): ResourcesConfig {
   return {
+    Auth: {
+      Cognito: {
+        identityPoolId: legacy.Auth.identityPoolId,
+        allowGuestAccess: true,
+      },
+    },
     API: {
       GraphQL: {
         endpoint: legacy.API.aws_appsync_graphqlEndpoint,
         region: legacy.API.aws_appsync_region,
-        defaultAuthMode: 'apiKey',
-        apiKey: legacy.API.aws_appsync_apiKey,
+        defaultAuthMode: 'iam',
       },
     },
   };

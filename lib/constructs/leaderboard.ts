@@ -8,6 +8,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { CodeFirstSchema, Directive, GraphqlType, InputType, ObjectType, ResolvableField } from 'awscdk-appsync-utils';
 import { NagSuppressions } from 'cdk-nag';
+import { ALL_COGNITO_GROUPS } from './idp';
 import { StandardLambdaPythonFunction } from './standard-lambda-python-function';
 
 import { Construct } from 'constructs';
@@ -186,7 +187,7 @@ export class Leaderboard extends Construct {
         endLapId: GraphqlType.int(),
         avgTime: GraphqlType.float(),
       },
-      directives: [Directive.apiKey(), Directive.iam(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
     });
     props.appsyncApi.schema.addType(averageLapObjectType);
 
@@ -216,7 +217,7 @@ export class Leaderboard extends Construct {
         mostConcecutiveLaps: GraphqlType.int(),
         profile: props.racerProfileObjectType.attribute(),
       },
-      directives: [Directive.apiKey(), Directive.iam(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
     });
 
     const leaderboardEntryArgs = {
@@ -268,7 +269,7 @@ export class Leaderboard extends Construct {
         leaderBoardFooter: GraphqlType.string(),
         sponsor: GraphqlType.string(),
       },
-      directives: [Directive.apiKey(), Directive.iam(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
     });
 
     props.appsyncApi.schema.addType(leaderboardConfigObjectType);
@@ -278,7 +279,7 @@ export class Leaderboard extends Construct {
         config: leaderboardConfigObjectType.attribute({ isRequired: true }),
         entries: leaderboardEntryObjectType.attribute({ isList: true }),
       },
-      directives: [Directive.apiKey(), Directive.iam(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
     });
 
     props.appsyncApi.schema.addType(leaderboardObjectType);
@@ -322,7 +323,7 @@ export class Leaderboard extends Construct {
         },
         returnType: leaderboardObjectType.attribute(),
         dataSource: leaderboardDataSource,
-        directives: [Directive.apiKey(), Directive.iam(), Directive.cognito('admin', 'operator', 'commentator')],
+        directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
       })
     );
 
@@ -361,8 +362,8 @@ export class Leaderboard extends Construct {
         responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($context.result)'),
         directives: [
           Directive.subscribe('addLeaderboardEntry'),
-          Directive.apiKey(),
-          Directive.cognito('admin', 'operator', 'commentator'),
+          Directive.iam(),
+          Directive.cognito(...ALL_COGNITO_GROUPS),
         ],
       })
     );
@@ -400,7 +401,11 @@ export class Leaderboard extends Construct {
                     }`
         ),
         responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($context.result)'),
-        directives: [Directive.subscribe('updateLeaderboardEntry'), Directive.apiKey(), Directive.iam()],
+        directives: [
+          Directive.subscribe('updateLeaderboardEntry'),
+          Directive.iam(),
+          Directive.cognito(...ALL_COGNITO_GROUPS),
+        ],
       })
     );
 
@@ -441,7 +446,11 @@ export class Leaderboard extends Construct {
                     }`
         ),
         responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($context.result)'),
-        directives: [Directive.subscribe('deleteLeaderboardEntry'), Directive.apiKey(), Directive.iam()],
+        directives: [
+          Directive.subscribe('deleteLeaderboardEntry'),
+          Directive.iam(),
+          Directive.cognito(...ALL_COGNITO_GROUPS),
+        ],
       })
     );
   }

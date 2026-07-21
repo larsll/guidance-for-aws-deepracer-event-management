@@ -10,15 +10,16 @@ with open("cfn.outputs") as json_file:
             region = key["OutputValue"]
         if key["OutputKey"] == "appsyncId":
             appsyncId = key["OutputValue"]
-        if key["OutputKey"] == "appsyncApiKey":
-            appsyncApiKey = key["OutputValue"]
+        if key["OutputKey"] == "publicIdentityPoolId":
+            identityPoolId = key["OutputValue"]
 
     output_data = {
+        "Auth": {
+            "identityPoolId": identityPoolId,
+        },
         "API": {
             "aws_appsync_graphqlEndpoint": appsyncEndpoint,
             "aws_appsync_region": region,
-            "aws_appsync_authenticationType": "API_KEY",
-            "aws_appsync_apiKey": appsyncApiKey,
         },
     }
 

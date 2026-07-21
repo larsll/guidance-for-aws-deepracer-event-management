@@ -93,7 +93,7 @@ export class LandingPageManager extends Construct {
         linkDescription: GraphqlType.string(),
         linkHref: GraphqlType.string(),
       },
-      directives: [Directive.apiKey(), Directive.iam(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito('admin', 'operator', 'commentator')],
     });
 
     props.appsyncApi.schema.addType(landingPageLinkObjectType);
@@ -102,7 +102,7 @@ export class LandingPageManager extends Construct {
       definition: {
         links: landingPageLinkObjectType.attribute({ isList: true }),
       },
-      directives: [Directive.apiKey(), Directive.iam(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito('admin', 'operator', 'commentator')],
     });
 
     props.appsyncApi.schema.addType(landingPageConfigObjectType);
@@ -141,7 +141,7 @@ export class LandingPageManager extends Construct {
         },
         requestMappingTemplate: appsync.MappingTemplate.dynamoDbGetItem('eventId', 'eventId'),
         responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
-        directives: [Directive.apiKey(), Directive.iam(), Directive.cognito('admin', 'operator', 'commentator')],
+        directives: [Directive.iam(), Directive.cognito('admin', 'operator', 'commentator')],
       })
     );
   }
