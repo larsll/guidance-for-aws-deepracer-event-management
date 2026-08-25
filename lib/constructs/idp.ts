@@ -22,6 +22,7 @@ export interface ExternalGroupNames {
   commentator?: string;
   registration?: string;
 }
+export const ALL_COGNITO_GROUPS = ['admin', 'operator', 'commentator', 'registration', 'racer'] as const;
 
 export interface IdpProps {
   distribution: cloudfront.IDistribution;

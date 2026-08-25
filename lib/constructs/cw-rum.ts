@@ -19,6 +19,8 @@ export class CwRumAppMonitor extends Construct {
   public readonly id: string;
   public readonly region: string;
   public readonly config: string;
+  public readonly identityPoolId: string;
+  public readonly unauthenticatedUserRole: iam.IRole;
 
   constructor(scope: Construct, id: string, props: CwRumAppMonitorProps) {
     super(scope, id);
@@ -136,6 +138,8 @@ export class CwRumAppMonitor extends Construct {
     this.script = rumScript;
     // this.name = cfn_app_monitor.ref // TODO is this export needed?
     this.id = appMonitorId; // TODO is this export needed?
+    this.identityPoolId = rum_identity_pool.ref;
+    this.unauthenticatedUserRole = rum_id_pool_unauth_user_role;
 
     const rumConfig = `{
             "sessionSampleRate": ${sessionSampleRate},

@@ -27,8 +27,6 @@ with open("cfn.outputs") as json_file:
             cwRumAppMonitorRegion = key["OutputValue"]
         if key["OutputKey"] == "cwRumAppMonitorConfig":
             cwRumAppMonitorConfig = key["OutputValue"]
-        if key["OutputKey"] == "appsyncApiKey":
-            appsyncApiKey = key["OutputValue"]
         if key["OutputKey"].startswith("registerCarSerialFunctionName"):
             registerCarSerialFunctionName = key["OutputValue"]
         if key["OutputKey"] == "useExternalIdp":
@@ -50,8 +48,6 @@ with open("cfn.outputs") as json_file:
         "API": {
             "aws_appsync_graphqlEndpoint": appsyncEndpoint,
             "aws_appsync_region": region,
-            "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
-            "aws_appsync_apiKey": appsyncApiKey,
         },
         "Rum": {
             "drem": {

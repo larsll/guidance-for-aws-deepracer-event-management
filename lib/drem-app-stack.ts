@@ -1,10 +1,11 @@
 import * as lambdaPython from '@aws-cdk/aws-lambda-python-alpha';
 import * as cdk from 'aws-cdk-lib';
-import { DockerImage, Duration, Expiration } from 'aws-cdk-lib';
+import { DockerImage } from 'aws-cdk-lib';
 import * as appsync from 'aws-cdk-lib/aws-appsync';
 import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
 import { IUserPool, UserPool } from 'aws-cdk-lib/aws-cognito';
 import { EventBus, IEventBus } from 'aws-cdk-lib/aws-events';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Role } from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
@@ -266,6 +267,23 @@ export class DeepracerEventManagerStack extends cdk.Stack {
       domainName: cloudfrontDomainName,
     });
 
+    // Grant the cwRum unauthenticated role access to the public leaderboard and overlay AppSync fields.
+    // The cwRum identity pool has allowUnauthenticatedIdentities: true and is the IdP used by
+    // the leaderboard and overlay apps.
+    cwRumAppMonitor.unauthenticatedUserRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['appsync:GraphQL'],
+        resources: [
+          `${appsyncResources.api.arn}/types/Query/fields/getLeaderboard`,
+          `${appsyncResources.api.arn}/types/Subscription/fields/onNewLeaderboardEntry`,
+          `${appsyncResources.api.arn}/types/Subscription/fields/onUpdateLeaderboardEntry`,
+          `${appsyncResources.api.arn}/types/Subscription/fields/onDeleteLeaderboardEntry`,
+          `${appsyncResources.api.arn}/types/Subscription/fields/onNewOverlayInfo`,
+        ],
+      })
+    );
+
     // Outputs
     new cdk.CfnOutput(this, 'DremWebsite', {
       value: 'https://' + cloudfrontDomainName,
@@ -313,10 +331,6 @@ export class DeepracerEventManagerStack extends cdk.Stack {
       value: appsyncResources.api.graphqlUrl,
     });
 
-    new cdk.CfnOutput(this, 'appsyncApiKey', {
-      value: appsyncResources.api.apiKey || '',
-    });
-
     new cdk.CfnOutput(this, 'userPoolWebClientId', {
       value: userPoolClientWebId,
     });
@@ -331,6 +345,10 @@ export class DeepracerEventManagerStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'identityPoolId', {
       value: identityPoolId,
+    });
+
+    new cdk.CfnOutput(this, 'publicIdentityPoolId', {
+      value: cwRumAppMonitor.identityPoolId,
     });
 
     new cdk.CfnOutput(this, 'userPoolId', {
@@ -423,13 +441,6 @@ export class DeepracerEventManagerStack extends cdk.Stack {
           },
         },
         additionalAuthorizationModes: [
-          {
-            authorizationType: appsync.AuthorizationType.API_KEY,
-            apiKeyConfig: {
-              name: 'unauthApiKey',
-              expires: Expiration.after(Duration.days(365)),
-            },
-          },
           {
             authorizationType: appsync.AuthorizationType.IAM,
           },

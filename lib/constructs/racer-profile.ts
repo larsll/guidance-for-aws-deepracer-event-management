@@ -3,6 +3,7 @@ import * as appsync from 'aws-cdk-lib/aws-appsync';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { CodeFirstSchema, Directive, GraphqlType, InputType, ObjectType, ResolvableField } from 'awscdk-appsync-utils';
 import { Construct } from 'constructs';
+import { ALL_COGNITO_GROUPS } from './idp';
 
 export interface AppsyncApiProps {
   api: appsync.GraphqlApi;
@@ -40,11 +41,7 @@ export class RacerProfile extends Construct {
         highlightColour: GraphqlType.string(),
         updatedAt: GraphqlType.awsDateTime(),
       },
-      directives: [
-        Directive.apiKey(),
-        Directive.iam(),
-        Directive.cognito('admin', 'operator', 'commentator', 'racer', 'registration'),
-      ],
+      directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
     });
     props.appsyncApi.schema.addType(profileObjectType);
     this.profileObjectType = profileObjectType;
@@ -82,7 +79,7 @@ export class RacerProfile extends Construct {
 }
 `),
         responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($context.result)'),
-        directives: [Directive.cognito('admin', 'operator', 'commentator', 'racer', 'registration')],
+        directives: [Directive.cognito(...ALL_COGNITO_GROUPS)],
       })
     );
 
@@ -135,11 +132,7 @@ export class RacerProfile extends Construct {
 }
 `),
         responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($context.result)'),
-        directives: [
-          Directive.apiKey(),
-          Directive.iam(),
-          Directive.cognito('admin', 'operator', 'commentator', 'racer', 'registration'),
-        ],
+        directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
       })
     );
   }
