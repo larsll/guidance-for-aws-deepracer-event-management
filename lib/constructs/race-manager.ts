@@ -15,6 +15,7 @@ import {
   ResolvableField,
 } from 'awscdk-appsync-utils';
 import { NagSuppressions } from 'cdk-nag';
+import { ALL_COGNITO_GROUPS } from './idp';
 import { StandardLambdaPythonFunction } from './standard-lambda-python-function';
 
 import { Construct } from 'constructs';
@@ -429,7 +430,7 @@ export class RaceManager extends Construct {
         currentLapTimeInMs: GraphqlType.float(),
         raceStatus: raceStatusEnum.attribute({ isRequired: true }),
       },
-      directives: [Directive.apiKey(), Directive.iam(), Directive.cognito('admin', 'operator', 'commentator')],
+      directives: [Directive.iam(), Directive.cognito(...ALL_COGNITO_GROUPS)],
     });
 
     props.appsyncApi.schema.addType(overlayObjectType);
@@ -481,9 +482,8 @@ export class RaceManager extends Construct {
         responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($context.result)'),
         directives: [
           Directive.subscribe('updateOverlayInfo'),
-          Directive.apiKey(),
           Directive.iam(),
-          Directive.cognito('admin', 'operator', 'commentator'),
+          Directive.cognito(...ALL_COGNITO_GROUPS),
         ],
       })
     );

@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { generateClient } from 'aws-amplify/api';
+import { graphqlQuery } from '../graphql/graphqlHelpers';
 import { getGlobalStats } from '../graphql/queries';
-
-const client = generateClient();
 
 export interface GlobalStats {
   totalEvents: number;
@@ -36,11 +34,8 @@ export function useStatsApi() {
     setLoading(true);
     setError(null);
     try {
-      const response = await client.graphql({
-        query: getGlobalStats,
-        authMode: 'apiKey',
-      });
-      setGlobalStats((response as any).data.getGlobalStats);
+      const response = await graphqlQuery<{ getGlobalStats: GlobalStats }>(getGlobalStats);
+      setGlobalStats(response.getGlobalStats);
     } catch (err: any) {
       console.error('Failed to fetch global stats:', err);
       setError(err.message || 'Failed to fetch stats');
