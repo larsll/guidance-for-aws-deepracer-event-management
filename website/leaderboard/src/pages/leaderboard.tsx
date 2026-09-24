@@ -21,7 +21,7 @@ interface LeaderboardProps {
   trackId: string;
   raceFormat: string;
   language?: string;
-  showQrCode: boolean;
+  showQrCode: string | null;
   scrollEnabled: boolean;
   showFlag: boolean;
 }

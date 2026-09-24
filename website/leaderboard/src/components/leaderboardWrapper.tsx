@@ -15,7 +15,8 @@ const LeaderboardWrapper = () => {
   const trackId = queryParams.get('track') ?? 'combined';
 
   const showQRcodeParam = queryParams.get('qr');
-  const showQRcode = showQRcodeParam !== null && showQRcodeParam !== 'false';
+  const showQRcode =
+    showQRcodeParam !== null && showQRcodeParam !== 'false' ? showQRcodeParam : null;
 
   const scrollParam = queryParams.get('scroll');
   const scroll = scrollParam === null ? true : /true/i.test(scrollParam);
