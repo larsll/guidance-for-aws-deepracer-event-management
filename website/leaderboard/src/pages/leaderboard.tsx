@@ -299,7 +299,7 @@ const Leaderboard = ({
               eventId={eventId}
               trackId={trackId}
               raceFormat={raceFormat}
-              qrCodeVisible={showQrCode}
+              qrCodeVisible={showQrCode ?? undefined}
             />
             <LeaderboardTable
               leaderboardEntries={leaderboardEntries}
@@ -316,7 +316,7 @@ const Leaderboard = ({
             trackId={trackId}
             raceFormat={raceFormat}
             text={leaderboardConfig.leaderBoardFooter}
-            qrCodeVisible={showQrCode}
+            qrCodeVisible={showQrCode ?? undefined}
           />
         </div>
       )}
